@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Colaboraclicker</title>
+  <style>
+    :root{
+      --bg:#000;
+      --panel:rgba(255,255,255,.05);
+      --panel2:rgba(255,255,255,.08);
+      --text:#f5f5f5;
+      --muted:#a6a6a6;
+      --line:rgba(255,255,255,.12);
+      --accent:#ffffff;
+      --accent-2:#d9d9d9;
+      --good:#24b04a;
+      --bad:#d64545;
+      --shadow:0 18px 60px rgba(0,0,0,.45);
+      --radius:24px;
+      --radius-sm:16px;
+      --sidebar:320px;
+      --digit-speed: 1s;
+      --ui-speed: 240ms;
+    }
+    body[data-theme="light"]{
+      --bg:#ffffff;
+      --panel:rgba(0,0,0,.04);
+      --panel2:rgba(0,0,0,.07);
+      --text:#111111;
+      --muted:#5c5c5c;
+      --line:rgba(0,0,0,.10);
+      --accent:#111111;
+      --accent-2:#2f2f2f;
+      --shadow:0 18px 60px rgba(0,0,0,.12);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      overflow-x:hidden;
+      transition: background var(--ui-speed) ease, color var(--ui-speed) ease;
+    }
+    .app{
+      min-height:100%;
+      display:grid;
+      grid-template-columns:minmax(280px, 320px) 1fr;
+    }
+    .sidebar{
+      position:relative;
+      width:100%;
+      border-right:1px solid var(--line);
+      background:var(--panel);
+      backdrop-filter: blur(14px);
+      padding:18px;
+      overflow:hidden;
+    }
+    .sidebar.collapsed{ transform: translateX(calc(-100% + 60px)); }
+    .mini-toggle{
+      position:absolute;
+      top:18px;
+      right:14px;
+      width:40px;height:40px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      cursor:pointer;
+      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease;
+    }
+    .mini-toggle:hover{transform:translateY(-1px)}
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:16px;
+      padding-right:50px;
+    }
+    .logo{
+      width:46px;height:46px;border-radius:14px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg, #9a9a9a, #2d2d2d);
+      color:#fff;
+      font-weight:900;
+    }
+    body[data-theme="dark"] .logo{
+      background:linear-gradient(135deg, #f0f0f0, #4a4a4a);
+      color:#111;
+    }
+    .brand h1{font-size:1.1rem;margin:0;line-height:1.1}
+    .brand p{margin:3px 0 0;color:var(--muted);font-size:.86rem}
+    .card{
+      border:1px solid var(--line);
+      background:var(--panel);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .user-card,.stats-card,.upgrades-card{padding:16px;margin-bottom:14px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      padding:8px 12px;border-radius:999px;
+      color:var(--text);font-size:.86rem;
+      transition: background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease;
+    }
+    .dot{
+      width:9px;height:9px;border-radius:50%;
+      background:var(--good);
+      box-shadow:0 0 0 4px rgba(36,176,74,.16);
+    }
+    .switch{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid var(--line);
+    }
+    .switch span{font-size:.9rem;color:var(--muted)}
+    .switch button{
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      border-radius:999px;
+      padding:8px 12px;
+      cursor:pointer;
+      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease;
+    }
+    .switch button:hover{transform:translateY(-1px)}
+    .menu-btn{
+      width:100%;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      padding:14px 16px;
+      border-radius:18px;
+      font-size:1rem;
+      cursor:pointer;
+      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease;
+    }
+    .menu-btn:hover{transform:translateY(-1px)}
+    .upgrade-list{display:grid;gap:10px;margin-top:12px}
+    .upgrade-item{
+      padding:14px;
+      border-radius:18px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+    }
+    .upgrade-item h4{margin:0 0 4px;font-size:1rem}
+    .upgrade-item p{margin:0 0 10px;color:var(--muted);font-size:.88rem;line-height:1.35}
+    .upgrade-item .meta{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .cost{font-weight:700}
+    .buy-btn{
+      border:none;cursor:pointer;
+      color:#111;
+      background:linear-gradient(180deg, #fff, #d9d9d9);
+      padding:9px 12px;border-radius:12px;
+      font-weight:800;
+      min-width:92px;
+    }
+    .buy-btn:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.6)}
+    body[data-theme="light"] .buy-btn{color:#fff;background:linear-gradient(180deg, #2a2a2a, #111)}
+    .main{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:clamp(18px, 4vw, 42px);
+    }
+    .topbar{
+      position:fixed;
+      top:16px;
+      right:16px;
+      display:flex;
+      gap:10px;
+      z-index:5;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .status-chip{
+      border:1px solid var(--line);
+      background:var(--panel);
+      backdrop-filter: blur(12px);
+      border-radius:999px;
+      padding:10px 14px;
+      font-size:.92rem;
+      box-shadow:var(--shadow);
+      transition: background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease;
+    }
+    .center-wrap{
+      width:min(100%, 920px);
+      text-align:center;
+      padding:clamp(40px, 6vw, 90px) 12px 40px;
+      display:grid;
+      gap:18px;
+      justify-items:center;
+    }
+    .title{
+      font-size:clamp(1.5rem, 2.2vw, 2.7rem);
+      font-weight:900;
+      margin:0;
+      letter-spacing:.2px;
+    }
+    .click-btn{
+      border:none;
+      cursor:pointer;
+      padding:18px 28px;
+      font-size:1.15rem;
+      font-weight:900;
+      color:#111;
+      border-radius:999px;
+      background:linear-gradient(180deg, #ffffff, #cfcfcf);
+      box-shadow:0 16px 38px rgba(0,0,0,.22);
+      min-width:180px;
+      transition: transform var(--ui-speed) ease, filter var(--ui-speed) ease, opacity var(--ui-speed) ease;
+    }
+    body[data-theme="dark"] .click-btn{
+      color:#111;
+      background:linear-gradient(180deg, #fafafa, #cfcfcf);
+    }
+    .click-btn:hover{filter:brightness(1.04)}
+    .click-btn:active{transform:translateY(1px)}
+    .click-btn:disabled{opacity:.45;cursor:not-allowed}
+    .counter-box{
+      display:grid;
+      justify-items:center;
+      gap:8px;
+      padding:28px 24px 24px;
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:var(--panel);
+      box-shadow:var(--shadow);
+      width:min(100%, 780px);
+      transform:scale(1);
+      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, border-color var(--ui-speed) ease;
+    }
+    .counter-caption{color:var(--muted);font-size:1rem;letter-spacing:.2px}
+    .rolling-number{
+      display:flex;
+      justify-content:center;
+      align-items:flex-end;
+      gap:0;
+      line-height:1;
+      font-weight:900;
+      font-variant-numeric: tabular-nums;
+      font-size:clamp(3rem, 9vw, 6.5rem);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      white-space:nowrap;
+      flex-wrap:nowrap;
+    }
+    .digit{
+      position:relative;
+      width:0.72em;
+      height:1em;
+      overflow:hidden;
+      display:inline-block;
+    }
+    .digit-track{
+      position:absolute;
+      inset:0;
+      display:flex;
+      flex-direction:column;
+      transition:transform var(--digit-speed) cubic-bezier(.2,.9,.2,1);
+      will-change:transform;
+    }
+    .digit-track span{
+      height:1em;
+      display:grid;
+      place-items:center;
+    }
+    .comma{
+      width:.42em;
+      display:inline-flex;
+      align-items:flex-end;
+      justify-content:center;
+      transform:translateY(-.02em);
+    }
+    .pending{display:none}
+    .banner{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      z-index:40;
+      background:var(--panel);
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      border-radius:18px;
+      padding:12px 14px;
+      max-width:min(360px, calc(100vw - 36px));
+      color:var(--text);
+      opacity:0;
+      transform:translateY(12px);
+      pointer-events:none;
+      transition:.25s ease;
+      backdrop-filter: blur(12px);
+    }
+    .banner.show{opacity:1;transform:translateY(0);pointer-events:auto}
+    .banner strong{display:block;margin-bottom:3px}
+    .banner p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.45}
+    .proposal{
+      position:fixed;
+      left:16px;
+      bottom:16px;
+      width:min(560px, calc(100vw - 32px));
+      z-index:30;
+      background:var(--panel);
+      backdrop-filter: blur(18px);
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      transform:translateY(18px);
+      opacity:0;
+      pointer-events:none;
+      transition:all .24s ease;
+    }
+    .proposal.show{
+      opacity:1;
+      transform:translateY(0);
+      pointer-events:auto;
+    }
+    .proposal-header{
+      display:grid;
+      grid-template-columns:64px 1fr;
+      gap:12px;
+      align-items:center;
+      padding:14px;
+    }
+    .proposal-icon{
+      width:64px;height:64px;border-radius:16px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      display:grid;place-items:center;
+      font-weight:700;
+      font-size:.86rem;
+    }
+    .proposal-title{margin:0;font-size:1rem;font-weight:800}
+    .proposal-sub{margin:3px 0 0;color:var(--muted);font-size:.88rem}
+    .vote-wrap{padding:0 14px 14px}
+    .vote-bar{
+      position:relative;
+      height:68px;
+      border:1px solid var(--line);
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      overflow:hidden;
+      background:var(--panel2);
+      border-radius:18px;
+    }
+    .vote-half{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:1.5rem;
+      font-weight:900;
+      position:relative;
+      user-select:none;
+    }
+    .vote-yes{background:rgba(36,176,74,.88);color:#071d0f;cursor:pointer}
+    .vote-no{background:rgba(214,69,69,.88);color:#240607;cursor:pointer}
+    .vote-count{
+      position:absolute;
+      bottom:8px;
+      right:12px;
+      font-size:1.8rem;
+      line-height:1;
+      opacity:.95;
+    }
+    .vote-no .vote-count{left:12px; right:auto}
+    .vote-footer{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      align-items:center;
+      padding:10px 2px 0;
+      font-size:.88rem;
+      color:var(--muted);
+    }
+    .vote-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .tiny-btn{
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      border-radius:12px;
+      padding:8px 10px;
+      cursor:pointer;
+    }
+    .tiny-btn:disabled{opacity:.4;cursor:not-allowed}
+    .modal-backdrop{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,.78);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:100;
+      padding:18px;
+      backdrop-filter: blur(8px);
+    }
+    .modal-backdrop.show{display:flex}
+    .modal{
+      width:min(460px, 100%);
+      background:var(--bg);
+      border:1px solid var(--line);
+      border-radius:28px;
+      box-shadow:var(--shadow);
+      padding:22px;
+    }
+    .modal h2{margin:0 0 8px;font-size:1.6rem}
+    .modal p{margin:0 0 14px;color:var(--muted);line-height:1.5}
+    .modal input{
+      width:100%;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:var(--panel);
+      color:var(--text);
+      padding:14px 16px;
+      font-size:1rem;
+      outline:none;
+      margin-bottom:14px;
+    }
+    .modal button{
+      width:100%;
+      border:none;
+      padding:14px 16px;
+      border-radius:16px;
+      background:linear-gradient(180deg, #fff, #d9d9d9);
+      color:#111;
+      font-weight:900;
+      cursor:pointer;
+      font-size:1rem;
+    }
+    @media (max-width: 960px){
+      .app{grid-template-columns:1fr}
+      .sidebar{
+        position:fixed;
+        top:0;left:0;height:100vh;
+        z-index:25;
+        width:min(320px, 90vw);
+        box-shadow: var(--shadow);
+        transition: transform var(--ui-speed) ease;
+      }
+      .sidebar.collapsed{ transform: translateX(calc(-100% + 60px)); }
+      .main{padding-top:84px}
+      .topbar{top:12px;left:12px;right:12px;justify-content:space-between}
+      .counter-box{min-width:0;width:100%}
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <div id="app" class="app" style="display:none;">
+    <aside id="sidebar" class="sidebar">
+      <button id="sidebarToggle" class="mini-toggle" title="Menú">☰</button>
+      <div class="brand">
+        <div class="logo">C</div>
+        <div>
+          <h1>Colaboraclicker</h1>
+          <p>Clicks compartidos</p>
+        </div>
+      </div>
+
+      <div class="card user-card">
+        <div class="row">
+          <div>
+            <div class="muted-small">Usuario</div>
+            <div id="userNameText" style="font-weight:800;font-size:1.05rem;">—</div>
+          </div>
+          <div class="pill"><span class="dot"></span><span id="connectionText">…</span></div>
+        </div>
+        <div class="switch">
+          <span>Tema</span>
+          <button id="themeToggle" type="button">Oscuro</button>
+        </div>
+      </div>
+
+      <div class="card stats-card">
+        <div class="row">
+          <div>
+            <div class="muted-small">Clicks</div>
+            <div id="sidebarClicks" style="font-size:1.65rem;font-weight:900;">0</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted-small">Online</div>
+            <div id="onlineCount" style="font-size:1.65rem;font-weight:900;">0</div>
+          </div>
+        </div>
+      </div>
+
+      <button id="openUpgrades" class="menu-btn">Mejoras</button>
+
+      <div id="upgradesPanel" class="card upgrades-card" style="display:none;">
+        <div class="upgrade-list" id="upgradeList"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="status-chip">👥 <strong id="onlineTop">0</strong></div>
+      </div>
+
+      <div class="center-wrap">
+        <h2 class="title">Colaboraclicker</h2>
+        <button id="clickButton" class="click-btn">Registrar click</button>
+
+        <div class="counter-box">
+          <div class="counter-caption">Clicks globales</div>
+          <div id="counter" class="rolling-number" aria-label="contador de clicks"></div>
+        </div>
+      </div>
+
+      <div id="proposal" class="proposal" aria-live="polite">
+        <div class="proposal-header">
+          <div class="proposal-icon">Voto</div>
+          <div>
+            <p id="proposalTitle" class="proposal-title">Propuesta activa</p>
+            <p id="proposalSub" class="proposal-sub">—</p>
+          </div>
+        </div>
+        <div class="vote-wrap">
+          <div class="vote-bar">
+            <div id="voteYes" class="vote-half vote-yes">Sí<div id="yesCount" class="vote-count">0</div></div>
+            <div id="voteNo" class="vote-half vote-no">No<div id="noCount" class="vote-count">0</div></div>
+          </div>
+          <div class="vote-footer">
+            <div class="vote-actions">
+              <button id="voteYesBtn" class="tiny-btn">Sí</button>
+              <button id="voteNoBtn" class="tiny-btn">No</button>
+              <button id="dismissProposal" class="tiny-btn">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="banner" class="banner"></div>
+    </main>
+  </div>
+
+  <div id="authModal" class="modal-backdrop">
+    <div class="modal">
+      <h2>Colaboraclicker</h2>
+      <p>Escribe tu nombre para entrar.</p>
+      <input id="usernameInput" maxlength="24" placeholder="Tu nombre" autocomplete="nickname" />
+      <button id="joinBtn">Entrar</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import {
+      getDatabase, ref, onValue, set, remove, runTransaction, onDisconnect, get
+    } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD1pzcr5sFXm9W0EX1Fss2ji9juEshlvQk",
+      authDomain: "colaboraclicker.firebaseapp.com",
+      databaseURL: "https://colaboraclicker-default-rtdb.firebaseio.com",
+      projectId: "colaboraclicker",
+      storageBucket: "colaboraclicker.firebasestorage.app",
+      messagingSenderId: "597310300521",
+      appId: "1:597310300521:web:ea4f0abb2c18535f0f9df8"
+    };
+
+    const DEFAULT_UPGRADES = {
+      clickPower: {
+        name: "Pulso extra",
+        desc: "+1 click por pulsación.",
+        baseCost: 30000,
+        growth: 1.75,
+        effect: "+1 por nivel"
+      },
+      passiveRate: {
+        name: "Eco activo",
+        desc: "Genera clicks con el tiempo.",
+        baseCost: 50000,
+        growth: 1.8,
+        effect: "+0.25 clicks/seg por nivel"
+      },
+      offlineBank: {
+        name: "Banco fantasma",
+        desc: "Acumula clicks aunque no haya nadie.",
+        baseCost: 85000,
+        growth: 2.0,
+        effect: "+0.5 clicks/seg por nivel"
+      },
+      groupPulse: {
+        name: "Pulso coral",
+        desc: "Más presencia, más empuje.",
+        baseCost: 125000,
+        growth: 2.05,
+        effect: "+0.1 clicks/seg por online"
+      }
+    };
+
+    const LS_UID = "colaboraclicker_uid";
+    const LS_NAME = "colaboraclicker_name";
+    const LS_THEME = "colaboraclicker_theme";
+    const LS_BLOCKED_UNTIL = "colaboraclicker_blocked_until";
+
+    const els = {
+      app: document.getElementById("app"),
+      authModal: document.getElementById("authModal"),
+      usernameInput: document.getElementById("usernameInput"),
+      joinBtn: document.getElementById("joinBtn"),
+      userNameText: document.getElementById("userNameText"),
+      connectionText: document.getElementById("connectionText"),
+      onlineCount: document.getElementById("onlineCount"),
+      onlineTop: document.getElementById("onlineTop"),
+      sidebarClicks: document.getElementById("sidebarClicks"),
+      openUpgrades: document.getElementById("openUpgrades"),
+      upgradesPanel: document.getElementById("upgradesPanel"),
+      upgradeList: document.getElementById("upgradeList"),
+      sidebar: document.getElementById("sidebar"),
+      sidebarToggle: document.getElementById("sidebarToggle"),
+      clickButton: document.getElementById("clickButton"),
+      counter: document.getElementById("counter"),
+      proposal: document.getElementById("proposal"),
+      proposalTitle: document.getElementById("proposalTitle"),
+      proposalSub: document.getElementById("proposalSub"),
+      yesCount: document.getElementById("yesCount"),
+      noCount: document.getElementById("noCount"),
+      voteYesBtn: document.getElementById("voteYesBtn"),
+      voteNoBtn: document.getElementById("voteNoBtn"),
+      dismissProposal: document.getElementById("dismissProposal"),
+      voteYes: document.getElementById("voteYes"),
+      voteNo: document.getElementById("voteNo"),
+      banner: document.getElementById("banner"),
+      themeToggle: document.getElementById("themeToggle")
+    };
+
+    const state = {
+      uid: localStorage.getItem(LS_UID) || crypto.randomUUID(),
+      name: localStorage.getItem(LS_NAME) || "",
+      theme: localStorage.getItem(LS_THEME) || "dark",
+      db: null,
+      app: null,
+      isReady: false,
+      clicks: 0,
+      displayClicks: 0,
+      onlineUsers: {},
+      proposal: null,
+      upgrades: { clickPower: 0, passiveRate: 0, offlineBank: 0, groupPulse: 0 },
+      global: {
+        lastTickMs: Date.now(),
+        clickPower: 1,
+        passivePerSec: 0,
+        offlinePerSec: 0,
+        groupPerSec: 0,
+        activeProposalId: null,
+        prevOnlineCount: 0
+      },
+      pendingQueue: [],
+      counterNodes: [],
+      blockedUntil: Number(localStorage.getItem(LS_BLOCKED_UNTIL) || 0),
+      clickTimestamps: []
+    };
+
+    function applyTheme(theme){
+      state.theme = theme === "light" ? "light" : "dark";
+      document.body.dataset.theme = state.theme;
+      localStorage.setItem(LS_THEME, state.theme);
+      els.themeToggle.textContent = state.theme === "dark" ? "Oscuro" : "Claro";
+    }
+
+    function sanitizeName(input) {
+      return input.trim().replace(/\s+/g, " ").slice(0, 24);
+    }
+
+    function showBanner(title, text) {
+      els.banner.innerHTML = `<strong>${title}</strong><p>${text}</p>`;
+      els.banner.classList.add("show");
+      clearTimeout(showBanner._t);
+      showBanner._t = setTimeout(() => els.banner.classList.remove("show"), 2500);
+    }
+
+    function playTone(freq = 880, duration = 0.15, gainValue = 0.05) {
+      try{
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = playTone._ctx || (playTone._ctx = new AudioCtx());
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(gainValue, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+        osc.stop(ctx.currentTime + duration + 0.03);
+      }catch(e){}
+    }
+
+    function formatNumber(n){
+      return new Intl.NumberFormat("en-US").format(Math.max(0, Math.floor(n)));
+    }
+
+    function computeEffects(){
+      state.global.clickPower = 1 + (state.upgrades.clickPower || 0);
+      state.global.passivePerSec = (state.upgrades.passiveRate || 0) * 0.25;
+      state.global.offlinePerSec = (state.upgrades.offlineBank || 0) * 0.5;
+      state.global.groupPerSec = (state.upgrades.groupPulse || 0) * 0.1;
+    }
+
+    function upgradeCost(id, level){
+      const u = DEFAULT_UPGRADES[id];
+      return Math.floor(u.baseCost * Math.pow(u.growth, level));
+    }
+
+    function clearCounter() {
+      els.counter.replaceChildren();
+      state.counterNodes = [];
+    }
+
+    function createDigitNode(initialDigit) {
+      const digitWrap = document.createElement("span");
+      digitWrap.className = "digit";
+      const track = document.createElement("span");
+      track.className = "digit-track";
+      for (let i = 0; i < 10; i++) {
+        const s = document.createElement("span");
+        s.textContent = String(i);
+        track.appendChild(s);
+      }
+      digitWrap.appendChild(track);
+
+      const setDigit = (digit, animate = false) => {
+        const next = Math.max(0, Math.min(9, Number(digit) || 0));
+        const current = Number(digitWrap.dataset.current ?? next) || 0;
+        if (current === next && animate) return;
+
+        if (!animate) {
+          track.style.transition = "none";
+          track.style.transform = `translateY(-${next * 100}%)`;
+          track.getBoundingClientRect();
+          track.style.transition = "transform var(--digit-speed) cubic-bezier(.2,.9,.2,1)";
+        } else {
+          track.style.transition = "none";
+          track.style.transform = `translateY(-${current * 100}%)`;
+          track.getBoundingClientRect();
+          requestAnimationFrame(() => {
+            track.style.transition = "transform var(--digit-speed) cubic-bezier(.2,.9,.2,1)";
+            track.style.transform = `translateY(-${next * 100}%)`;
+          });
+        }
+
+        digitWrap.dataset.current = String(next);
+      };
+
+      setDigit(initialDigit, false);
+      return { el: digitWrap, track, current: Math.max(0, Math.min(9, Number(initialDigit) || 0)), setDigit };
+    }
+
+    function buildCounter(formatted) {
+      clearCounter();
+      [...formatted].forEach((ch) => {
+        if (ch === ",") {
+          const sep = document.createElement("span");
+          sep.className = "comma";
+          sep.textContent = ",";
+          els.counter.appendChild(sep);
+          state.counterNodes.push({ type: "comma", el: sep });
+          return;
+        }
+        const node = createDigitNode(Number(ch) || 0);
+        els.counter.appendChild(node.el);
+        state.counterNodes.push({ type: "digit", ...node });
+      });
+      state.displayClicks = Number(formatted.replace(/,/g, "")) || 0;
+    }
+
+    function updateCounter(value) {
+      const formatted = formatNumber(value);
+      const digitsOnly = formatted.replace(/,/g, "");
+      const currentDigitsOnly = state.counterNodes
+        .filter(n => n.type === "digit")
+        .map(n => String(n.current ?? Number(n.el?.dataset.current ?? 0) ?? 0))
+        .join("");
+
+      if (!state.counterNodes.length || currentDigitsOnly.length !== digitsOnly.length) {
+        buildCounter(formatted);
+      } else {
+        let digitIndex = 0;
+        for (const ch of formatted) {
+          if (ch === ",") continue;
+          const node = state.counterNodes.filter(n => n.type === "digit")[digitIndex];
+          const next = Number(ch) || 0;
+          if (node && node.current !== next) {
+            node.setDigit(next, true);
+            node.current = next;
+          }
+          digitIndex++;
+        }
+        state.displayClicks = Number(digitsOnly) || 0;
+      }
+      els.sidebarClicks.textContent = formatted;
+    }
+
+    function updateUpgradeButtons(){
+      els.upgradeList.innerHTML = "";
+      Object.keys(DEFAULT_UPGRADES).forEach((id) => {
+        const level = state.upgrades[id] || 0;
+        const cost = upgradeCost(id, level);
+        const u = DEFAULT_UPGRADES[id];
+        const item = document.createElement("div");
+        item.className = "upgrade-item";
+        item.innerHTML = `
+          <h4>${u.name} <span style="color:var(--muted);font-weight:700;">niv. ${level}</span></h4>
+          <p>${u.desc}</p>
+          <div class="meta">
+            <div>
+              <div class="muted-small">${u.effect}</div>
+              <div class="cost">${formatNumber(cost)} clicks</div>
+            </div>
+            <button class="buy-btn">Comprar</button>
+          </div>
+        `;
+        const btn = item.querySelector("button");
+        const hasEnough = state.clicks >= cost;
+        const onlineEnough = Object.keys(state.onlineUsers).length >= 3;
+        btn.disabled = !hasEnough || !onlineEnough || !!state.global.activeProposalId;
+        btn.textContent = state.global.activeProposalId ? "Votación" : (onlineEnough ? "Proponer" : "Online < 3");
+        btn.addEventListener("click", () => proposePurchase(id));
+        els.upgradeList.appendChild(item);
+      });
+    }
+
+    function renderProposal(){
+      const p = state.proposal;
+      if (!p) {
+        els.proposal.classList.remove("show");
+        return;
+      }
+      const onlineCount = Object.keys(state.onlineUsers).length;
+      const threshold = Math.floor(onlineCount / 2) + 1;
+      els.proposal.classList.add("show");
+      els.proposalTitle.textContent = `${p.proposerName} propone ${DEFAULT_UPGRADES[p.upgradeId]?.name || p.upgradeId}`;
+      els.proposalSub.textContent = `${threshold} votos para decidir`;
+      els.yesCount.textContent = String(p.yesCount || 0);
+      els.noCount.textContent = String(p.noCount || 0);
+
+      const alreadyVoted = p.voters?.[state.uid];
+      els.voteYesBtn.disabled = !!alreadyVoted;
+      els.voteNoBtn.disabled = !!alreadyVoted;
+      els.voteYesBtn.textContent = alreadyVoted ? "Votado" : "Sí";
+      els.voteNoBtn.textContent = alreadyVoted ? "Votado" : "No";
+
+      if ((Number(p.yesCount || 0) >= threshold) && threshold > 0) finalizeProposal("yes");
+      if ((Number(p.noCount || 0) >= threshold) && threshold > 0) finalizeProposal("no");
+    }
+
+    async function initFirebase(){
+      if (state.isReady || !state.name) return;
+      state.app = initializeApp(firebaseConfig);
+      state.db = getDatabase(state.app);
+      state.isReady = true;
+      els.connectionText.textContent = "OK";
+
+      const connectedRef = ref(state.db, ".info/connected");
+      onValue(connectedRef, async (snap) => {
+        if (snap.val() === true) {
+          const myPresence = ref(state.db, `presence/${state.uid}`);
+          await set(myPresence, { name: state.name, online: true, at: Date.now() });
+          onDisconnect(myPresence).remove();
+          await set(ref(state.db, `users/${state.uid}`), { name: state.name, lastSeen: Date.now() });
+        }
+      });
+
+      onValue(ref(state.db, "presence"), async (snap) => {
+        const previous = Object.keys(state.onlineUsers || {}).length;
+        state.onlineUsers = snap.val() || {};
+        const current = Object.keys(state.onlineUsers).length;
+        els.onlineCount.textContent = String(current);
+        els.onlineTop.textContent = String(current);
+        updateUpgradeButtons();
+
+        if (previous > 0 && current === 0) {
+          await markEmptyNow();
+        } else if (previous === 0 && current > 0) {
+          await settleOfflineClicks();
+        }
+
+        state.global.prevOnlineCount = current;
+      });
+
+      onValue(ref(state.db, "state"), (snap) => {
+        const v = snap.val() || {};
+        const remoteClicks = Number(v.globalClicks || 0);
+        state.clicks = remoteClicks;
+        state.upgrades = {
+          clickPower: Number(v.upgrades?.clickPower || 0),
+          passiveRate: Number(v.upgrades?.passiveRate || 0),
+          offlineBank: Number(v.upgrades?.offlineBank || 0),
+          groupPulse: Number(v.upgrades?.groupPulse || 0)
+        };
+        state.global.lastTickMs = Number(v.lastTickMs || Date.now());
+        state.global.activeProposalId = v.activeProposalId || null;
+        computeEffects();
+        if (remoteClicks >= state.displayClicks) {
+          updateCounter(remoteClicks);
+        }
+        updateUpgradeButtons();
+      });
+
+      onValue(ref(state.db, "proposal"), (snap) => {
+        state.proposal = snap.val();
+        renderProposal();
+      });
+
+      const stateRef = ref(state.db, "state");
+      const current = await get(stateRef);
+      if (!current.exists()) {
+        await set(stateRef, {
+          globalClicks: 0,
+          upgrades: { clickPower: 0, passiveRate: 0, offlineBank: 0, groupPulse: 0 },
+          lastTickMs: Date.now(),
+          lastEmptyAt: null,
+          activeProposalId: null
+        });
+      }
+    }
+
+    async function markEmptyNow(){
+      if (!state.db) return;
+      const now = Date.now();
+      await runTransaction(ref(state.db, "state"), (current) => {
+        if (!current) return current;
+        current.lastEmptyAt = now;
+        return current;
+      });
+    }
+
+    async function settleOfflineClicks(){
+      if (!state.db) return;
+      const now = Date.now();
+      await runTransaction(ref(state.db, "state"), (current) => {
+        if (!current || !current.lastEmptyAt) return current;
+        const elapsed = Math.max(0, now - Number(current.lastEmptyAt || now));
+        const upgrades = current.upgrades || {};
+        const offlinePerSec = (Number(upgrades.offlineBank || 0) * 0.5) + (Number(upgrades.groupPulse || 0) * 0.1);
+        const gain = Math.floor((elapsed / 1000) * offlinePerSec);
+        current.lastEmptyAt = null;
+        if (gain > 0) {
+          current.globalClicks = Number(current.globalClicks || 0) + gain;
+        }
+        return current;
+      });
+    }
+
+    function hasClickBlocked(){
+      const now = Date.now();
+      return now < state.blockedUntil;
+    }
+
+    function registerClickRate(){
+      const now = Date.now();
+      state.clickTimestamps = state.clickTimestamps.filter(t => now - t < 1000);
+      state.clickTimestamps.push(now);
+      if (state.clickTimestamps.length > 15) {
+        state.blockedUntil = now + 30000;
+        localStorage.setItem(LS_BLOCKED_UNTIL, String(state.blockedUntil));
+        els.clickButton.disabled = true;
+        showBanner("Pausa", "Demasiados clicks por segundo.");
+        setTimeout(() => {
+          if (Date.now() >= state.blockedUntil) {
+            state.blockedUntil = 0;
+            localStorage.removeItem(LS_BLOCKED_UNTIL);
+            els.clickButton.disabled = false;
+          }
+        }, 30000);
+        return false;
+      }
+      return true;
+    }
+
+    async function processPendingClick(){
+      if (!state.db) return;
+      const clicksToAdd = state.global.clickPower;
+      await runTransaction(ref(state.db, "state"), (current) => {
+        if (!current) return current;
+        current.globalClicks = Number(current.globalClicks || 0) + clicksToAdd;
+        current.lastTickMs = Date.now();
+        return current;
+      });
+    }
+
+    function queueClick(){
+      if (!state.isReady || !state.db) return;
+      if (hasClickBlocked()) {
+        const remain = Math.ceil((state.blockedUntil - Date.now()) / 1000);
+        showBanner("Bloqueado", `Espera ${remain}s.`);
+        return;
+      }
+      if (!registerClickRate()) return;
+      const optimistic = state.displayClicks + state.global.clickPower;
+      updateCounter(optimistic);
+      processPendingClick();
+    }
+
+    function upgradeRateWithOnline() {
+      return Object.keys(state.onlineUsers).length * 0.1;
+    }
+
+    async function catchUpPassive(){
+      if (!state.isReady || !state.db) return;
+      const now = Date.now();
+      const stateRef = ref(state.db, "state");
+      await runTransaction(stateRef, (current) => {
+        if (!current) return current;
+        const last = Number(current.lastTickMs || now);
+        const elapsed = Math.max(0, now - last);
+        const upgrades = current.upgrades || {};
+        const passivePerSec = (Number(upgrades.passiveRate || 0) * 0.25)
+          + (Number(upgrades.offlineBank || 0) * 0.5)
+          + (Number(upgrades.groupPulse || 0) * Math.max(0, Object.keys(state.onlineUsers).length) * 0.1);
+        const gain = Math.floor((elapsed / 1000) * passivePerSec);
+        if (gain <= 0) return current;
+        current.globalClicks = Number(current.globalClicks || 0) + gain;
+        current.lastTickMs = now;
+        return current;
+      });
+    }
+
+    async function proposePurchase(upgradeId){
+      if (!state.isReady || !state.db) return;
+      const onlineCount = Object.keys(state.onlineUsers).length;
+      const level = state.upgrades[upgradeId] || 0;
+      const cost = upgradeCost(upgradeId, level);
+
+      if (state.clicks < cost) {
+        showBanner("No alcanza", `${formatNumber(cost)} clicks para ${DEFAULT_UPGRADES[upgradeId].name}.`);
+        return;
+      }
+      if (onlineCount < 3) {
+        showBanner("Faltan personas", "Se necesitan 3 online.");
+        return;
+      }
+
+      const stateRef = ref(state.db, "state");
+      const result = await runTransaction(stateRef, (current) => {
+        if (!current) return current;
+        if (current.activeProposalId) return current;
+        const curClicks = Number(current.globalClicks || 0);
+        if (curClicks < cost) return current;
+        current.activeProposalId = crypto.randomUUID();
+        current.pendingProposal = {
+          id: current.activeProposalId,
+          upgradeId,
+          proposerName: state.name,
+          cost,
+          yesCount: 0,
+          noCount: 0,
+          voters: {},
+          createdAt: Date.now()
+        };
+        return current;
+      });
+      if (!result.committed) {
+        showBanner("Bloqueado", "Ya hay una votación activa.");
+        return;
+      }
+
+      await set(ref(state.db, "proposal"), {
+        upgradeId,
+        proposerName: state.name,
+        cost,
+        yesCount: 0,
+        noCount: 0,
+        voters: {},
+        createdAt: Date.now(),
+        active: true
+      });
+      playTone(880, 0.14, 0.04);
+    }
+
+    async function vote(choice){
+      if (!state.isReady || !state.db || !state.proposal) return;
+      await runTransaction(ref(state.db, "proposal"), (p) => {
+        if (!p || !p.active) return p;
+        if (!p.voters) p.voters = {};
+        if (p.voters[state.uid]) return p;
+        p.voters[state.uid] = choice;
+        if (choice === "yes") p.yesCount = Number(p.yesCount || 0) + 1;
+        else p.noCount = Number(p.noCount || 0) + 1;
+        return p;
+      });
+    }
+
+    async function finalizeProposal(result){
+      if (!state.isReady || !state.db || !state.proposal) return;
+      const { upgradeId, cost } = state.proposal;
+      const stateRef = ref(state.db, "state");
+      const done = await runTransaction(stateRef, (current) => {
+        if (!current || !current.activeProposalId) return current;
+        if (!current.pendingProposal || current.pendingProposal.upgradeId !== upgradeId) return current;
+        if (result === "yes") {
+          const curClicks = Number(current.globalClicks || 0);
+          if (curClicks < cost) return current;
+          current.globalClicks = curClicks - cost;
+          current.upgrades = current.upgrades || {};
+          current.upgrades[upgradeId] = Number(current.upgrades[upgradeId] || 0) + 1;
+        }
+        current.activeProposalId = null;
+        current.pendingProposal = null;
+        return current;
+      });
+
+      if (!done.committed) return;
+
+      await remove(ref(state.db, "proposal"));
+      state.proposal = null;
+      if (result === "yes") {
+        playTone(540, 0.18, 0.05);
+        showBanner("Aprobada", `${DEFAULT_UPGRADES[upgradeId].name} aplicada.`);
+      } else {
+        playTone(180, 0.18, 0.05);
+        showBanner("Rechazada", "La propuesta no pasó.");
+      }
+      renderProposal();
+    }
+
+    function boot(){
+      applyTheme(state.theme);
+      if (state.blockedUntil > Date.now()) {
+        els.clickButton.disabled = true;
+        const remain = Math.ceil((state.blockedUntil - Date.now()) / 1000);
+        showBanner("Bloqueado", `Espera ${remain}s.`);
+        setTimeout(() => {
+          if (Date.now() >= state.blockedUntil) {
+            state.blockedUntil = 0;
+            localStorage.removeItem(LS_BLOCKED_UNTIL);
+            els.clickButton.disabled = false;
+          }
+        }, Math.max(0, state.blockedUntil - Date.now()));
+      }
+
+      if (state.name) {
+        els.userNameText.textContent = state.name;
+        els.usernameInput.value = state.name;
+        els.authModal.classList.remove("show");
+        els.app.style.display = "grid";
+        initFirebase();
+      } else {
+        els.authModal.classList.add("show");
+      }
+
+      buildCounter("0");
+      computeEffects();
+      setInterval(catchUpPassive, 1000);
+      setInterval(() => {
+        if (state.db && state.isReady) {
+          renderProposal();
+        }
+      }, 1000);
+    }
+
+    els.joinBtn.addEventListener("click", async () => {
+      const name = sanitizeName(els.usernameInput.value);
+      if (!name) return;
+      state.name = name;
+      localStorage.setItem(LS_NAME, name);
+      localStorage.setItem(LS_UID, state.uid);
+      els.userNameText.textContent = name;
+      els.authModal.classList.remove("show");
+      els.app.style.display = "grid";
+      await initFirebase();
+      showBanner("Listo", `Entras como ${name}.`);
+    });
+
+    els.usernameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") els.joinBtn.click();
+    });
+
+    els.clickButton.addEventListener("click", queueClick);
+
+    els.openUpgrades.addEventListener("click", () => {
+      const open = els.upgradesPanel.style.display !== "none";
+      els.upgradesPanel.style.display = open ? "none" : "block";
+      els.openUpgrades.textContent = open ? "Mejoras" : "Ocultar";
+    });
+
+    els.sidebarToggle.addEventListener("click", () => {
+      els.sidebar.classList.toggle("collapsed");
+    });
+
+    els.themeToggle.addEventListener("click", () => {
+      applyTheme(state.theme === "dark" ? "light" : "dark");
+    });
+
+    els.voteYesBtn.addEventListener("click", () => {
+      vote("yes");
+      playTone(780, 0.1, 0.03);
+    });
+    els.voteNoBtn.addEventListener("click", () => {
+      vote("no");
+      playTone(220, 0.1, 0.03);
+    });
+    els.dismissProposal.addEventListener("click", () => {
+      els.proposal.classList.remove("show");
+    });
+
+    boot();
+  </script>
+</body>
+</html>
