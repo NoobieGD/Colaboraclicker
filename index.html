@@ -654,7 +654,8 @@
         activeProposalId: null,
         prevOnlineCount: 0
       },
-      pendingQueue: [],
+      pendingClicks: 0,
+      flushingClicks: false,
       counterNodes: [],
       blockedUntil: Number(localStorage.getItem(LS_BLOCKED_UNTIL) || 0),
       clickTimestamps: []
@@ -978,15 +979,26 @@
       return true;
     }
 
-    async function processPendingClick(){
-      if (!state.db) return;
-      const clicksToAdd = state.global.clickPower;
-      await runTransaction(ref(state.db, "state"), (current) => {
+    async function flushPendingClicks(){
+      if (!state.db || !state.pendingClicks || state.pendingClicks <= 0) return;
+      if (state.flushingClicks) return;
+
+      const clicksToAdd = state.pendingClicks;
+      state.pendingClicks = 0;
+      state.flushingClicks = true;
+
+      const result = await runTransaction(ref(state.db, "state"), (current) => {
         if (!current) return current;
         current.globalClicks = Number(current.globalClicks || 0) + clicksToAdd;
         current.lastTickMs = Date.now();
         return current;
       });
+
+      state.flushingClicks = false;
+
+      if (!result.committed) {
+        state.pendingClicks += clicksToAdd;
+      }
     }
 
     function queueClick(){
@@ -997,9 +1009,7 @@
         return;
       }
       if (!registerClickRate()) return;
-      const optimistic = state.displayClicks + state.global.clickPower;
-      updateCounter(optimistic);
-      processPendingClick();
+      state.pendingClicks += state.global.clickPower;
     }
 
     function upgradeRateWithOnline() {
@@ -1152,6 +1162,7 @@
       buildCounter("0");
       computeEffects();
       setInterval(catchUpPassive, 1000);
+      setInterval(flushPendingClicks, 1000);
       setInterval(() => {
         if (state.db && state.isReady) {
           renderProposal();
@@ -1202,6 +1213,12 @@
     });
     els.dismissProposal.addEventListener("click", () => {
       els.proposal.classList.remove("show");
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (state.db && state.pendingClicks > 0) {
+        try { flushPendingClicks(); } catch (e) {}
+      }
     });
 
     boot();
