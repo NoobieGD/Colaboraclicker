@@ -962,7 +962,7 @@
       const now = Date.now();
       state.clickTimestamps = state.clickTimestamps.filter(t => now - t < 1000);
       state.clickTimestamps.push(now);
-      if (state.clickTimestamps.length > 15) {
+      if (state.clickTimestamps.length > 50) {
         state.blockedUntil = now + 30000;
         localStorage.setItem(LS_BLOCKED_UNTIL, String(state.blockedUntil));
         els.clickButton.disabled = true;
