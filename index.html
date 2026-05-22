@@ -2,63 +2,73 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Colaboraclicker</title>
   <style>
     :root{
-      --bg:#000;
+      --bg:#050505;
       --panel:rgba(255,255,255,.05);
       --panel2:rgba(255,255,255,.08);
+      --panel3:rgba(255,255,255,.11);
       --text:#f5f5f5;
       --muted:#a6a6a6;
+      --muted2:#7b7b7b;
       --line:rgba(255,255,255,.12);
       --accent:#ffffff;
-      --accent-2:#d9d9d9;
+      --accent2:#d9d9d9;
       --good:#24b04a;
       --bad:#d64545;
+      --warn:#f0b73a;
       --shadow:0 18px 60px rgba(0,0,0,.45);
       --radius:24px;
       --radius-sm:16px;
-      --sidebar:320px;
-      --digit-speed: 1s;
-      --ui-speed: 240ms;
+      --sidebar:340px;
+      --ui-speed:240ms;
+      --digit-speed:1s;
+      --ease:cubic-bezier(.2,.9,.2,1);
     }
     body[data-theme="light"]{
-      --bg:#ffffff;
+      --bg:#fbfbfb;
       --panel:rgba(0,0,0,.04);
       --panel2:rgba(0,0,0,.07);
-      --text:#111111;
+      --panel3:rgba(0,0,0,.12);
+      --text:#101010;
       --muted:#5c5c5c;
+      --muted2:#7d7d7d;
       --line:rgba(0,0,0,.10);
       --accent:#111111;
-      --accent-2:#2f2f2f;
+      --accent2:#2f2f2f;
       --shadow:0 18px 60px rgba(0,0,0,.12);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
       background:var(--bg);
       color:var(--text);
       overflow-x:hidden;
       transition: background var(--ui-speed) ease, color var(--ui-speed) ease;
     }
+    button,input,textarea{font:inherit}
     .app{
       min-height:100%;
       display:grid;
-      grid-template-columns:minmax(280px, 320px) 1fr;
+      grid-template-columns:minmax(290px,var(--sidebar)) 1fr;
     }
     .sidebar{
       position:relative;
       width:100%;
+      height:100vh;
       border-right:1px solid var(--line);
       background:var(--panel);
       backdrop-filter: blur(14px);
       padding:18px;
-      overflow:hidden;
+      overflow-y:auto;
+      overflow-x:hidden;
+      overscroll-behavior: contain;
     }
-    .sidebar.collapsed{ transform: translateX(calc(-100% + 60px)); }
+    .sidebar.collapsed{transform:translateX(calc(-100% + 60px))}
     .mini-toggle{
       position:absolute;
       top:18px;
@@ -69,7 +79,8 @@
       background:var(--panel2);
       color:var(--text);
       cursor:pointer;
-      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease;
+      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease;
+      z-index:3;
     }
     .mini-toggle:hover{transform:translateY(-1px)}
     .brand{
@@ -85,10 +96,11 @@
       background:linear-gradient(135deg, #9a9a9a, #2d2d2d);
       color:#fff;
       font-weight:900;
+      box-shadow:0 10px 24px rgba(0,0,0,.25);
     }
-    body[data-theme="dark"] .logo{
-      background:linear-gradient(135deg, #f0f0f0, #4a4a4a);
-      color:#111;
+    body[data-theme="light"] .logo{
+      background:linear-gradient(135deg, #1d1d1d, #6a6a6a);
+      color:#fff;
     }
     .brand h1{font-size:1.1rem;margin:0;line-height:1.1}
     .brand p{margin:3px 0 0;color:var(--muted);font-size:.86rem}
@@ -97,9 +109,12 @@
       background:var(--panel);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
+      backdrop-filter: blur(12px);
     }
-    .user-card,.stats-card,.upgrades-card{padding:16px;margin-bottom:14px}
+    .user-card,.stats-card,.upgrades-card,.chat-card,.sidebar-panel{padding:16px;margin-bottom:14px}
     .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .stack{display:grid;gap:8px}
+    .muted-small{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2)}
     .pill{
       display:inline-flex;align-items:center;gap:8px;
       border:1px solid var(--line);
@@ -107,6 +122,9 @@
       padding:8px 12px;border-radius:999px;
       color:var(--text);font-size:.86rem;
       transition: background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease;
+      user-select:none;
+      white-space:nowrap;
+      position:relative;
     }
     .dot{
       width:9px;height:9px;border-radius:50%;
@@ -123,66 +141,77 @@
       border-top:1px solid var(--line);
     }
     .switch span{font-size:.9rem;color:var(--muted)}
-    .switch button{
+    .switch button,.menu-btn,.tiny-btn,.buy-btn,.chat-send,.stat-close{
       border:1px solid var(--line);
       background:var(--panel2);
       color:var(--text);
-      border-radius:999px;
-      padding:8px 12px;
+      border-radius:16px;
       cursor:pointer;
-      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease;
+      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease, opacity var(--ui-speed) ease, box-shadow var(--ui-speed) ease;
     }
-    .switch button:hover{transform:translateY(-1px)}
+    .switch button:hover,.menu-btn:hover,.tiny-btn:hover,.buy-btn:hover,.chat-send:hover,.stat-close:hover{transform:translateY(-1px)}
     .menu-btn{
       width:100%;
-      border:1px solid var(--line);
-      background:var(--panel2);
-      color:var(--text);
       padding:14px 16px;
-      border-radius:18px;
       font-size:1rem;
-      cursor:pointer;
-      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease;
+      font-weight:800;
     }
-    .menu-btn:hover{transform:translateY(-1px)}
+    .menu-actions{
+      display:grid;
+      gap:10px;
+      margin-top:10px;
+    }
     .upgrade-list{display:grid;gap:10px;margin-top:12px}
     .upgrade-item{
       padding:14px;
       border-radius:18px;
       border:1px solid var(--line);
       background:var(--panel2);
+      overflow:hidden;
+      position:relative;
     }
-    .upgrade-item h4{margin:0 0 4px;font-size:1rem}
+    .upgrade-item.unaffordable{opacity:.74}
+    .upgrade-item h4{margin:0 0 4px;font-size:1rem;display:flex;align-items:center;gap:8px}
     .upgrade-item p{margin:0 0 10px;color:var(--muted);font-size:.88rem;line-height:1.35}
     .upgrade-item .meta{display:flex;justify-content:space-between;gap:12px;align-items:center}
-    .cost{font-weight:700}
+    .upgrade-icon{
+      width:34px;height:34px;border-radius:12px;
+      display:grid;place-items:center;
+      background:var(--panel3);
+      border:1px solid var(--line);
+      flex:0 0 auto;
+      font-size:1rem;
+    }
+    .cost{font-weight:800}
     .buy-btn{
-      border:none;cursor:pointer;
+      padding:9px 12px;
+      font-weight:900;
+      min-width:108px;
       color:#111;
       background:linear-gradient(180deg, #fff, #d9d9d9);
-      padding:9px 12px;border-radius:12px;
-      font-weight:800;
-      min-width:92px;
+      box-shadow:0 12px 24px rgba(0,0,0,.18);
     }
-    .buy-btn:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.6)}
     body[data-theme="light"] .buy-btn{color:#fff;background:linear-gradient(180deg, #2a2a2a, #111)}
+    .buy-btn:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.6);transform:none}
     .main{
       min-width:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:clamp(18px, 4vw, 42px);
+      position:relative;
+      padding:clamp(18px,4vw,42px);
+      overflow:hidden;
     }
     .topbar{
       position:fixed;
       top:16px;
       right:16px;
+      left:calc(var(--sidebar) + 20px);
       display:flex;
       gap:10px;
       z-index:5;
       flex-wrap:wrap;
       justify-content:flex-end;
+      pointer-events:none;
     }
+    .topbar > *{pointer-events:auto}
     .status-chip{
       border:1px solid var(--line);
       background:var(--panel);
@@ -192,20 +221,107 @@
       font-size:.92rem;
       box-shadow:var(--shadow);
       transition: background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease;
+      user-select:none;
+      white-space:nowrap;
     }
+    .status-chip strong{font-weight:900}
+    .online-hover-wrap{
+      position:relative;
+    }
+    .online-panel{
+      position:absolute;
+      top:calc(100% + 10px);
+      right:0;
+      width:min(360px, calc(100vw - 32px));
+      background:var(--bg);
+      border:1px solid var(--line);
+      border-radius:20px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      opacity:0;
+      transform:translateY(8px);
+      pointer-events:none;
+      transition:opacity var(--ui-speed) ease, transform var(--ui-speed) ease;
+      z-index:10;
+    }
+    .online-hover-wrap:hover .online-panel,
+    .online-hover-wrap:focus-within .online-panel{
+      opacity:1;
+      transform:translateY(0);
+      pointer-events:auto;
+    }
+    .online-panel-header{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      background:var(--panel);
+    }
+    .online-list{
+      max-height:320px;
+      overflow:auto;
+    }
+    .online-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:12px;
+      padding:10px 14px;
+      border-bottom:1px solid var(--line);
+      align-items:center;
+    }
+    .online-row:last-child{border-bottom:none}
+    .online-name{font-weight:800;display:flex;align-items:center;gap:8px}
+    .online-cps{font-variant-numeric:tabular-nums;font-weight:900;color:var(--accent)}
+    .online-cps small{font-weight:700;color:var(--muted);margin-left:4px}
     .center-wrap{
-      width:min(100%, 920px);
-      text-align:center;
-      padding:clamp(40px, 6vw, 90px) 12px 40px;
+      width:min(100%, 980px);
+      margin:0 auto;
+      padding:clamp(40px,6vw,90px) 12px 40px;
       display:grid;
       gap:18px;
       justify-items:center;
+      transition:opacity 260ms ease, transform 260ms ease;
+    }
+    .center-wrap.view-hidden{
+      opacity:0;
+      transform:translateY(18px) scale(.98);
+      pointer-events:none;
+      position:absolute;
+      inset:0;
+    }
+    .stats-view{
+      width:min(100%, 980px);
+      margin:0 auto;
+      padding:clamp(40px,6vw,90px) 12px 40px;
+      display:none;
+      gap:16px;
+      justify-items:stretch;
+      transition:opacity 260ms ease, transform 260ms ease;
+    }
+    .stats-view.show{
+      display:grid;
     }
     .title{
-      font-size:clamp(1.5rem, 2.2vw, 2.7rem);
+      font-size:clamp(1.5rem,2.2vw,2.7rem);
       font-weight:900;
       margin:0;
       letter-spacing:.2px;
+      text-align:center;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      text-align:center;
+      max-width:64ch;
+      line-height:1.5;
+    }
+    .click-area{
+      display:grid;
+      gap:14px;
+      justify-items:center;
+      width:100%;
     }
     .click-btn{
       border:none;
@@ -215,18 +331,22 @@
       font-weight:900;
       color:#111;
       border-radius:999px;
-      background:linear-gradient(180deg, #ffffff, #cfcfcf);
+      background:#fff;
       box-shadow:0 16px 38px rgba(0,0,0,.22);
       min-width:180px;
-      transition: transform var(--ui-speed) ease, filter var(--ui-speed) ease, opacity var(--ui-speed) ease;
+      transition: transform var(--ui-speed) ease, filter var(--ui-speed) ease, opacity var(--ui-speed) ease, box-shadow var(--ui-speed) ease;
+      position:relative;
+      overflow:hidden;
     }
     body[data-theme="dark"] .click-btn{
       color:#111;
-      background:linear-gradient(180deg, #fafafa, #cfcfcf);
+      background:#fff;
     }
     .click-btn:hover{filter:brightness(1.04)}
-    .click-btn:active{transform:translateY(1px)}
+    .click-btn:active{transform:translateY(1px) scale(.99)}
     .click-btn:disabled{opacity:.45;cursor:not-allowed}
+    .click-btn:not(:disabled){cursor:pointer}
+    .click-btn::after{display:none}
     .counter-box{
       display:grid;
       justify-items:center;
@@ -236,9 +356,18 @@
       border-radius:34px;
       background:var(--panel);
       box-shadow:var(--shadow);
-      width:min(100%, 780px);
-      transform:scale(1);
-      transition: transform var(--ui-speed) ease, background var(--ui-speed) ease, border-color var(--ui-speed) ease;
+      width:min(100%, 820px);
+      transition: background var(--ui-speed) ease, border-color var(--ui-speed) ease, box-shadow var(--ui-speed) ease;
+      position:relative;
+      overflow:hidden;
+    }
+    .counter-box::before{
+      content:"";
+      position:absolute;
+      inset:-40% -10% auto auto;
+      width:220px;height:220px;
+      background:radial-gradient(circle, rgba(255,255,255,.07), transparent 60%);
+      pointer-events:none;
     }
     .counter-caption{color:var(--muted);font-size:1rem;letter-spacing:.2px}
     .rolling-number{
@@ -248,9 +377,9 @@
       gap:0;
       line-height:1;
       font-weight:900;
-      font-variant-numeric: tabular-nums;
-      font-size:clamp(3rem, 9vw, 6.5rem);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-variant-numeric:tabular-nums;
+      font-size:clamp(3rem,9vw,6.5rem);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
       white-space:nowrap;
       flex-wrap:nowrap;
     }
@@ -266,7 +395,7 @@
       inset:0;
       display:flex;
       flex-direction:column;
-      transition:transform var(--digit-speed) cubic-bezier(.2,.9,.2,1);
+      transition:transform var(--digit-speed) var(--ease);
       will-change:transform;
     }
     .digit-track span{
@@ -281,33 +410,89 @@
       justify-content:center;
       transform:translateY(-.02em);
     }
-    .pending{display:none}
-    .banner{
-      position:fixed;
-      right:18px;
-      bottom:18px;
-      z-index:40;
-      background:var(--panel);
+    .secondary-counter{
+      display:grid;
+      gap:6px;
+      justify-items:center;
+      text-align:center;
+      padding:16px 18px;
+      border-radius:24px;
       border:1px solid var(--line);
+      background:var(--panel);
       box-shadow:var(--shadow);
-      border-radius:18px;
-      padding:12px 14px;
-      max-width:min(360px, calc(100vw - 36px));
-      color:var(--text);
-      opacity:0;
-      transform:translateY(12px);
-      pointer-events:none;
-      transition:.25s ease;
-      backdrop-filter: blur(12px);
+      min-width:min(100%, 360px);
     }
-    .banner.show{opacity:1;transform:translateY(0);pointer-events:auto}
-    .banner strong{display:block;margin-bottom:3px}
-    .banner p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.45}
+    .secondary-counter .counter-caption{font-size:.86rem;text-align:center;width:100%}
+    .secondary-number{
+      display:flex;
+      justify-content:center;
+      align-items:flex-end;
+      gap:0;
+      line-height:1;
+      font-size:clamp(1.3rem, 3vw, 2.1rem);
+      font-weight:900;
+      font-variant-numeric:tabular-nums;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+      width:100%;
+      text-align:center;
+    }
+    .local-chip{
+      margin-left:auto;
+      align-self:flex-end;
+      display:grid;
+      gap:4px;
+      justify-items:end;
+      min-width:160px;
+    }
+    .local-chip .status-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .mini-note{
+      color:var(--muted);
+      font-size:.86rem;
+      text-align:center;
+    }
+    .progress-row{
+      width:100%;
+      display:grid;
+      gap:10px;
+    }
+    .progress-track{
+      height:20px;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      display:flex;
+    }
+    .progress-yes{
+      background:linear-gradient(90deg, rgba(36,176,74,.88), rgba(36,176,74,.98));
+      height:100%;
+      width:50%;
+      transition:width 220ms ease;
+    }
+    .progress-no{
+      background:linear-gradient(90deg, rgba(214,69,69,.98), rgba(214,69,69,.82));
+      height:100%;
+      width:50%;
+      transition:width 220ms ease;
+    }
+    .progress-labels{
+      display:flex;
+      justify-content:space-between;
+      font-size:.9rem;
+      color:var(--muted);
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .progress-labels strong{color:var(--text)}
     .proposal{
       position:fixed;
       left:16px;
       bottom:16px;
-      width:min(560px, calc(100vw - 32px));
+      width:min(640px, calc(100vw - 32px));
       z-index:30;
       background:var(--panel);
       backdrop-filter: blur(18px);
@@ -327,72 +512,95 @@
     }
     .proposal-header{
       display:grid;
-      grid-template-columns:64px 1fr;
+      grid-template-columns:74px 1fr;
       gap:12px;
       align-items:center;
       padding:14px;
+      border-bottom:1px solid var(--line);
     }
     .proposal-icon{
-      width:64px;height:64px;border-radius:16px;
+      width:74px;height:74px;border-radius:18px;
       border:1px solid var(--line);
       background:var(--panel2);
       color:var(--text);
       display:grid;place-items:center;
-      font-weight:700;
-      font-size:.86rem;
+      font-size:1.8rem;
+      font-weight:900;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
     }
     .proposal-title{margin:0;font-size:1rem;font-weight:800}
-    .proposal-sub{margin:3px 0 0;color:var(--muted);font-size:.88rem}
-    .vote-wrap{padding:0 14px 14px}
+    .proposal-sub{margin:3px 0 0;color:var(--muted);font-size:.88rem;line-height:1.35}
+    .vote-wrap{padding:14px}
     .vote-bar{
       position:relative;
-      height:68px;
+      height:72px;
       border:1px solid var(--line);
-      display:grid;
-      grid-template-columns:1fr 1fr;
       overflow:hidden;
       background:var(--panel2);
       border-radius:18px;
-    }
-    .vote-half{
       display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:1.5rem;
-      font-weight:900;
-      position:relative;
       user-select:none;
     }
-    .vote-yes{background:rgba(36,176,74,.88);color:#071d0f;cursor:pointer}
-    .vote-no{background:rgba(214,69,69,.88);color:#240607;cursor:pointer}
+    .vote-fill{
+      height:100%;
+      transition:width 260ms ease;
+    }
+    .vote-yes-fill{
+      width:50%;
+      background:linear-gradient(90deg, rgba(36,176,74,.86), rgba(36,176,74,.98));
+    }
+    .vote-no-fill{
+      width:50%;
+      background:linear-gradient(90deg, rgba(214,69,69,.98), rgba(214,69,69,.86));
+    }
     .vote-count{
       position:absolute;
-      bottom:8px;
-      right:12px;
-      font-size:1.8rem;
+      top:50%;
+      transform:translateY(-50%);
+      font-size:1.7rem;
       line-height:1;
-      opacity:.95;
+      opacity:.96;
+      font-weight:900;
+      text-shadow:0 2px 8px rgba(0,0,0,.25);
     }
-    .vote-no .vote-count{left:12px; right:auto}
+    .vote-yes-count{right:12px;color:#06210f}
+    .vote-no-count{left:12px;color:#2f0808}
     .vote-footer{
-      display:flex;
-      justify-content:flex-end;
-      gap:8px;
-      align-items:center;
-      padding:10px 2px 0;
+      display:grid;
+      gap:10px;
+      padding-top:10px;
       font-size:.88rem;
       color:var(--muted);
     }
-    .vote-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .vote-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
     .tiny-btn{
+      padding:8px 12px;
+      font-size:.92rem;
+    }
+    .vote-meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .vote-pill{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 12px;
       border:1px solid var(--line);
+      border-radius:999px;
       background:var(--panel2);
       color:var(--text);
-      border-radius:12px;
-      padding:8px 10px;
-      cursor:pointer;
     }
-    .tiny-btn:disabled{opacity:.4;cursor:not-allowed}
+    .tiny-btn:disabled{opacity:.45;cursor:not-allowed}
     .modal-backdrop{
       position:fixed;inset:0;
       background:rgba(0,0,0,.78);
@@ -401,11 +609,11 @@
       justify-content:center;
       z-index:100;
       padding:18px;
-      backdrop-filter: blur(8px);
+      backdrop-filter:blur(8px);
     }
     .modal-backdrop.show{display:flex}
     .modal{
-      width:min(460px, 100%);
+      width:min(460px,100%);
       background:var(--bg);
       border:1px solid var(--line);
       border-radius:28px;
@@ -414,7 +622,7 @@
     }
     .modal h2{margin:0 0 8px;font-size:1.6rem}
     .modal p{margin:0 0 14px;color:var(--muted);line-height:1.5}
-    .modal input{
+    .modal input,.chat-input{
       width:100%;
       border-radius:16px;
       border:1px solid var(--line);
@@ -423,8 +631,8 @@
       padding:14px 16px;
       font-size:1rem;
       outline:none;
-      margin-bottom:14px;
     }
+    .modal input{margin-bottom:14px}
     .modal button{
       width:100%;
       border:none;
@@ -436,24 +644,366 @@
       cursor:pointer;
       font-size:1rem;
     }
+    body[data-theme="light"] .modal button{background:linear-gradient(180deg, #202020, #111);color:#fff}
+    .chat-wrap{
+      display:grid;
+      gap:10px;
+    }
+    .chat-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .chat-box{
+      border:1px solid var(--line);
+      background:var(--panel2);
+      border-radius:18px;
+      overflow:hidden;
+    }
+    .chat-list{
+      max-height:240px;
+      overflow:auto;
+      padding:10px;
+      display:grid;
+      gap:8px;
+    }
+    .chat-row{
+      display:grid;
+      gap:4px;
+      padding:10px 12px;
+      border-radius:14px;
+      background:var(--panel);
+      border:1px solid rgba(255,255,255,.04);
+    }
+    .chat-topline{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      font-size:.85rem;
+      color:var(--muted);
+    }
+    .chat-name{font-weight:800;color:var(--text)}
+    .chat-text{
+      line-height:1.45;
+      font-size:.94rem;
+      word-break:break-word;
+    }
+    .chat-compose{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px;
+      align-items:center;
+    }
+    .chat-send{
+      padding:13px 14px;
+      min-width:84px;
+      font-weight:900;
+      background:var(--panel2);
+    }
+    .chat-send:disabled{opacity:.45;cursor:not-allowed}
+    .chat-toggle{padding:10px 14px;font-weight:900}
+    .chat-drawer{
+      position:fixed;
+      top:72px;
+      right:16px;
+      width:min(380px, calc(100vw - 32px));
+      max-height:min(72vh, 760px);
+      z-index:90;
+      display:none;
+      margin:0;
+      overflow:hidden;
+    }
+    .chat-drawer.show{display:block}
+    .chat-drawer .chat-list{max-height:min(48vh, 520px)}
+    .stats-grid{
+      width:100%;
+      display:grid;
+      grid-template-columns:repeat(12, minmax(0,1fr));
+      gap:16px;
+    }
+    .stat-card{
+      grid-column:span 4;
+      padding:16px;
+      border-radius:22px;
+      border:1px solid var(--line);
+      background:var(--panel);
+      box-shadow:var(--shadow);
+    }
+    .stat-card h3{
+      margin:0 0 10px;
+      font-size:1rem;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .stat-value{
+      font-size:2rem;
+      font-weight:900;
+      font-variant-numeric:tabular-nums;
+      margin:0 0 4px;
+    }
+    .stat-sub{
+      margin:0;
+      color:var(--muted);
+      line-height:1.45;
+      font-size:.92rem;
+    }
+    .chart-card{
+      grid-column:span 8;
+      padding:16px;
+      border-radius:22px;
+      border:1px solid var(--line);
+      background:var(--panel);
+      box-shadow:var(--shadow);
+    }
+    .chart-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .chart-head h3{margin:0;font-size:1rem;display:flex;align-items:center;gap:8px}
+    .chart-wrap{
+      width:100%;
+      height:260px;
+      border-radius:18px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      position:relative;
+    }
+    canvas{display:block;width:100%;height:100%}
+    .chart-tooltip{
+      position:absolute;
+      left:12px;
+      top:12px;
+      z-index:2;
+      pointer-events:none;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.68);
+      color:#fff;
+      font-size:.88rem;
+      line-height:1.35;
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(10px);
+      transform:translate3d(0,0,0);
+      max-width:min(240px, calc(100% - 24px));
+    }
+    body[data-theme="light"] .chart-tooltip{
+      background:rgba(255,255,255,.92);
+      color:#101010;
+    }
+    .leader-card{
+      grid-column:span 4;
+      padding:16px;
+      border-radius:22px;
+      border:1px solid var(--line);
+      background:var(--panel);
+      box-shadow:var(--shadow);
+    }
+    .leader-list{
+      display:grid;
+      gap:8px;
+      margin-top:12px;
+    }
+    .leader-row{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+    }
+    .leader-rank{
+      width:28px;height:28px;border-radius:999px;
+      display:grid;place-items:center;
+      background:var(--panel3);
+      font-weight:900;
+      font-size:.88rem;
+    }
+    .leader-name{font-weight:800}
+    .leader-meta{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem}
+    .offline-toast{
+      position:fixed;
+      inset:auto 50% 22px auto;
+      transform:translateX(50%) translateY(16px);
+      z-index:60;
+      width:min(680px, calc(100vw - 28px));
+      background:var(--bg);
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      border-radius:22px;
+      padding:16px 18px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 260ms ease, transform 260ms ease;
+      text-align:center;
+    }
+    .offline-toast.show{opacity:1;transform:translateX(50%) translateY(0)}
+    .offline-toast strong{display:block;font-size:1.05rem;margin-bottom:4px}
+    .offline-toast p{margin:0;color:var(--muted);line-height:1.45}
+    .visual-layer{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:50;
+      overflow:hidden;
+    }
+    .spark{
+      position:absolute;
+      width:10px;height:10px;border-radius:999px;
+      background:#fff;
+      opacity:0;
+      transform:translate(-50%,-50%) scale(.5);
+      animation:spark 700ms var(--ease) forwards;
+      box-shadow:0 0 22px rgba(255,255,255,.45);
+    }
+    .click-pop{
+      position:absolute;
+      font-weight:900;
+      font-size:.95rem;
+      color:var(--text);
+      text-shadow:0 2px 10px rgba(0,0,0,.25);
+      transform:translate(-50%,-50%);
+      animation:popUp 900ms var(--ease) forwards;
+      pointer-events:none;
+      white-space:nowrap;
+    }
+    .ribbon{
+      position:fixed;
+      right:16px;
+      bottom:16px;
+      z-index:40;
+      background:var(--panel);
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      border-radius:18px;
+      padding:12px 14px;
+      max-width:min(360px, calc(100vw - 36px));
+      color:var(--text);
+      opacity:0;
+      transform:translateY(12px);
+      pointer-events:none;
+      transition:.25s ease;
+      backdrop-filter: blur(12px);
+    }
+    .ribbon.show{opacity:1;transform:translateY(0);pointer-events:auto}
+    .ribbon strong{display:block;margin-bottom:3px}
+    .ribbon p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.45}
+    @keyframes spark{
+      0%{opacity:0;transform:translate(-50%,-50%) scale(.25)}
+      20%{opacity:1}
+      100%{opacity:0;transform:translate(-50%,-120%) scale(1.4)}
+    }
+    @keyframes popUp{
+      0%{opacity:0;transform:translate(-50%,-20%) scale(.9)}
+      20%{opacity:1}
+      100%{opacity:0;transform:translate(-50%,-110%) scale(1.05)}
+    }
+    .pulse{
+      animation:pulseSoft 600ms var(--ease) 1;
+    }
+    @keyframes pulseSoft{
+      0%{opacity:1}
+      45%{opacity:.92}
+      100%{opacity:1}
+    }
+    .glow{
+      box-shadow:0 0 0 1px rgba(255,255,255,.12), 0 20px 40px rgba(255,255,255,.06), var(--shadow);
+    }
+    .top-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+    .local-stat-row{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+      align-items:end;
+      margin-top:8px;
+    }
+    .local-stat{
+      padding:10px 12px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:var(--panel2);
+      min-width:160px;
+      text-align:right;
+    }
+    .local-stat .value{
+      font-size:1.35rem;
+      font-weight:900;
+      font-variant-numeric:tabular-nums;
+    }
+    .local-stat .label{
+      font-size:.82rem;
+      color:var(--muted);
+    }
+
+    #localCpsText{
+      display:inline-block;
+      min-width:5ch;
+      text-align:right;
+      font-variant-numeric:tabular-nums;
+    }
+    #globalRateBig{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      width:max-content;
+      min-width:0;
+      margin-inline:auto;
+      text-align:center;
+      font-variant-numeric:tabular-nums;
+    }
+
     @media (max-width: 960px){
       .app{grid-template-columns:1fr}
       .sidebar{
         position:fixed;
-        top:0;left:0;height:100vh;
+        top:0;left:0;
+        height:100vh;
         z-index:25;
-        width:min(320px, 90vw);
-        box-shadow: var(--shadow);
+        width:min(340px, 90vw);
+        box-shadow:var(--shadow);
         transition: transform var(--ui-speed) ease;
       }
       .sidebar.collapsed{ transform: translateX(calc(-100% + 60px)); }
       .main{padding-top:84px}
-      .topbar{top:12px;left:12px;right:12px;justify-content:space-between}
+      .topbar{
+        top:12px;
+        left:12px;
+        right:12px;
+        justify-content:space-between;
+      }
       .counter-box{min-width:0;width:100%}
+      .stats-grid{grid-template-columns:1fr}
+      .chart-card,.leader-card,.stat-card{grid-column:span 12}
+      .proposal{
+        left:12px;
+        bottom:12px;
+        width:calc(100vw - 24px);
+      }
+      .online-panel{
+        width:min(320px, calc(100vw - 24px));
+      }
     }
   </style>
 </head>
 <body data-theme="dark">
+  <div class="visual-layer" id="visualLayer"></div>
+
   <div id="app" class="app" style="display:none;">
     <aside id="sidebar" class="sidebar">
       <button id="sidebarToggle" class="mini-toggle" title="Menú">☰</button>
@@ -471,7 +1021,13 @@
             <div class="muted-small">Usuario</div>
             <div id="userNameText" style="font-weight:800;font-size:1.05rem;">—</div>
           </div>
-          <div class="pill"><span class="dot"></span><span id="connectionText">…</span></div>
+          <div class="pill" aria-label="Usuarios online">
+            <span class="dot"></span>
+            <span><strong id="onlineCount">0</strong> online</span>
+          </div>
+          <div id="onlinePanel" class="online-panel" aria-hidden="true" style="display:none">
+            <div id="onlineList" class="online-list"></div>
+          </div>
         </div>
         <div class="switch">
           <span>Tema</span>
@@ -480,65 +1036,178 @@
       </div>
 
       <div class="card stats-card">
-        <div class="row">
-          <div>
-            <div class="muted-small">Clicks</div>
-            <div id="sidebarClicks" style="font-size:1.65rem;font-weight:900;">0</div>
-          </div>
-          <div style="text-align:right">
-            <div class="muted-small">Online</div>
-            <div id="onlineCount" style="font-size:1.65rem;font-weight:900;">0</div>
-          </div>
-        </div>
+  <div class="local-stat-row" style="grid-template-columns:1fr; align-items:start;">
+    <div>
+      <div class="muted-small">Estado</div>
+      <div id="connectionText" style="font-weight:800">…</div>
+    </div>
+    <div class="local-stat">
+      <div class="label">Tus clicks/seg</div>
+      <div id="localCpsText" class="value">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="menu-actions">
+        <button id="openUpgrades" class="menu-btn">Mejoras</button>
+        <button id="openStats" class="menu-btn">Estadísticas</button>
       </div>
 
-      <button id="openUpgrades" class="menu-btn">Mejoras</button>
-
       <div id="upgradesPanel" class="card upgrades-card" style="display:none;">
+        <div class="row" style="margin-bottom:8px">
+          <strong>Mejoras</strong>
+          
+        </div>
         <div class="upgrade-list" id="upgradeList"></div>
       </div>
     </aside>
 
     <main class="main">
       <div class="topbar">
-        <div class="status-chip">👥 <strong id="onlineTop">0</strong></div>
-      </div>
-
-      <div class="center-wrap">
-        <h2 class="title">Colaboraclicker</h2>
-        <button id="clickButton" class="click-btn">Registrar click</button>
-
-        <div class="counter-box">
-          <div class="counter-caption">Clicks globales</div>
-          <div id="counter" class="rolling-number" aria-label="contador de clicks"></div>
+        <div class="top-actions">
+          <div class="status-chip online-hover-wrap" tabindex="0">
+            👥 <strong id="onlineTop">0</strong>
+            <div id="topOnlinePanel" class="online-panel" aria-hidden="true">
+              <div class="online-panel-header">
+                <strong>Usuarios online</strong>
+                <span class="muted-small" style="margin:0">CPS</span>
+              </div>
+              <div id="topOnlineList" class="online-list"></div>
+            </div>
+          </div>
+          <button id="chatToggle" class="status-chip chat-toggle" type="button">💬 Chat</button>
         </div>
       </div>
 
+      <section id="mainView" class="center-wrap">
+        <h2 class="title">Colaboraclicker</h2>
+        <p class="subtitle">Comparte progreso con todos.</p>
+
+        <div class="click-area">
+          <button id="clickButton" class="click-btn">Click</button>
+          
+        </div>
+
+        <div class="counter-box" id="counterBox">
+          <div class="counter-caption">Clicks globales</div>
+          <div id="counter" class="rolling-number" aria-label="contador de clicks"></div>
+        </div>
+
+        <div class="secondary-counter">
+          <div class="counter-caption">Clicks/min globales</div>
+          <div id="globalRateBig" class="rolling-number secondary-number" aria-label="contador de clicks por minuto"></div>
+        </div>
+      </section>
+
+      <section id="statsView" class="stats-view">
+        <div class="row" style="width:100%">
+          <div>
+            <h2 class="title" style="text-align:left;margin-bottom:4px">Estadísticas</h2>
+            <p class="subtitle" style="text-align:left">Datos globales de la sesión y del historial reciente de esta página.</p>
+          </div>
+          <button id="closeStats" class="stat-close" style="padding:12px 14px;font-weight:900">Cerrar</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3>📈 Total generado</h3>
+            <p id="statTotalGenerated" class="stat-value">0</p>
+            <p class="stat-sub">Total generado por usuarios, mejoras y generación pasiva.</p>
+          </div>
+          <div class="stat-card">
+            <h3>💰 Clicks globales</h3>
+            <p id="statGlobalClicks" class="stat-value">0</p>
+            <p class="stat-sub">Clicks disponibles para mejoras y propuestas.</p>
+          </div>
+          <div class="stat-card">
+            <h3>🔥 Pico por segundo</h3>
+            <p id="statPeakRate" class="stat-value">0</p>
+            <p id="statPeakStamp" class="stat-sub">—</p>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-head">
+              <h3>🧭 Gráfica de clicks/seg globales</h3>
+              <span id="chartWindowLabel" class="muted-small">Últimos 60 segundos</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="rateChart" width="1200" height="420"></canvas>
+              <div id="chartTooltip" class="chart-tooltip" hidden></div>
+            </div>
+          </div>
+
+          <div class="leader-card">
+            <h3 style="margin:0 0 8px">🏆 Top contribuidores</h3>
+            <p class="stat-sub" style="margin:0">Solo cuenta quien ha hecho clicks en los últimos 7 días.</p>
+            <div id="leaderList" class="leader-list"></div>
+          </div>
+
+          <div class="stat-card">
+            <h3>🧪 Sesión local</h3>
+            <p id="statSessionClicks" class="stat-value">0</p>
+            <p class="stat-sub">Clicks aplicados mientras esta pestaña está abierta.</p>
+          </div>
+          <div class="stat-card">
+            <h3>🌐 Online ahora</h3>
+            <p id="statOnlineNow" class="stat-value">0</p>
+            <p class="stat-sub">Usuarios conectados al sistema en este momento.</p>
+          </div>
+        </div>
+      </section>
+
       <div id="proposal" class="proposal" aria-live="polite">
         <div class="proposal-header">
-          <div class="proposal-icon">Voto</div>
+          <div id="proposalIcon" class="proposal-icon">✨</div>
           <div>
             <p id="proposalTitle" class="proposal-title">Propuesta activa</p>
             <p id="proposalSub" class="proposal-sub">—</p>
           </div>
         </div>
         <div class="vote-wrap">
-          <div class="vote-bar">
-            <div id="voteYes" class="vote-half vote-yes">Sí<div id="yesCount" class="vote-count">0</div></div>
-            <div id="voteNo" class="vote-half vote-no">No<div id="noCount" class="vote-count">0</div></div>
+          <div class="progress-row">
+            <div class="vote-bar" aria-hidden="true">
+              <div id="voteYesFill" class="vote-fill vote-yes-fill"></div>
+              <div id="voteNoFill" class="vote-fill vote-no-fill"></div>
+              <div id="yesCount" class="vote-count vote-yes-count">0</div>
+              <div id="noCount" class="vote-count vote-no-count">0</div>
+            </div>
+            <div class="progress-labels">
+              <div><strong id="yesPercent">50%</strong> sí</div>
+              <div><strong id="noPercent">50%</strong> no</div>
+            </div>
           </div>
           <div class="vote-footer">
-            <div class="vote-actions">
-              <button id="voteYesBtn" class="tiny-btn">Sí</button>
-              <button id="voteNoBtn" class="tiny-btn">No</button>
-              <button id="dismissProposal" class="tiny-btn">Cerrar</button>
+            <div class="vote-meta">
+              <div class="vote-pill" id="voteInfo">Esperando votos</div>
+              <div class="vote-actions">
+                <button id="voteYesBtn" class="tiny-btn">Sí</button>
+                <button id="voteNoBtn" class="tiny-btn">No</button>
+                <button id="dismissProposal" class="tiny-btn">Cerrar</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div id="banner" class="banner"></div>
+      <div id="banner" class="ribbon"></div>
+      <div id="offlineToast" class="offline-toast"></div>
     </main>
+  </div>
+
+  <div id="chatPanel" class="card chat-card chat-drawer" aria-hidden="true">
+    <div class="chat-wrap">
+      <div class="chat-head">
+        <strong>Chat global</strong>
+        <span class="muted-small">50 mensajes</span>
+      </div>
+      <div class="chat-box">
+        <div id="chatList" class="chat-list"></div>
+      </div>
+      <div class="chat-compose">
+        <input id="chatInput" class="chat-input" maxlength="180" placeholder="Escribe un mensaje…" autocomplete="off" />
+        <button id="chatSend" class="chat-send" type="button">Enviar</button>
+      </div>
+    </div>
   </div>
 
   <div id="authModal" class="modal-backdrop">
@@ -553,7 +1222,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
     import {
-      getDatabase, ref, onValue, set, remove, runTransaction, onDisconnect, get
+      getDatabase, ref, onValue, set, remove, runTransaction, onDisconnect, get, update, push
     } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
 
     const firebaseConfig = {
@@ -566,41 +1235,162 @@
       appId: "1:597310300521:web:ea4f0abb2c18535f0f9df8"
     };
 
-    const DEFAULT_UPGRADES = {
-      clickPower: {
-        name: "Pulso extra",
-        desc: "+1 click por pulsación.",
-        baseCost: 30000,
-        growth: 1.75,
-        effect: "+1 por nivel"
-      },
-      passiveRate: {
-        name: "Eco activo",
-        desc: "Genera clicks con el tiempo.",
-        baseCost: 50000,
-        growth: 1.8,
-        effect: "+0.25 clicks/seg por nivel"
-      },
-      offlineBank: {
-        name: "Banco fantasma",
-        desc: "Acumula clicks aunque no haya nadie.",
-        baseCost: 85000,
-        growth: 2.0,
-        effect: "+0.5 clicks/seg por nivel"
-      },
-      groupPulse: {
-        name: "Pulso coral",
-        desc: "Más presencia, más empuje.",
-        baseCost: 125000,
-        growth: 2.05,
-        effect: "+0.1 clicks/seg por online"
-      }
-    };
-
     const LS_UID = "colaboraclicker_uid";
     const LS_NAME = "colaboraclicker_name";
     const LS_THEME = "colaboraclicker_theme";
     const LS_BLOCKED_UNTIL = "colaboraclicker_blocked_until";
+    const LS_BAN_TIER = "colaboraclicker_ban_tier";
+    const LS_LAST_EXIT = "colaboraclicker_last_exit";
+
+    const UPGRADE_DEFS = {
+      clickPower: {
+        icon: "✋",
+        name: "Pulso extra",
+        desc: "Cada click vale 1 más.",
+        baseCost: 22500,
+        growth: 1.75,
+        effect: "+1 por nivel"
+      },
+      passiveRate: {
+        icon: "⏱️",
+        name: "Eco activo",
+        desc: "Genera clicks sin tocar nada.",
+        baseCost: 37500,
+        growth: 1.80,
+        effect: "+0.18 clicks/seg por nivel"
+      },
+      offlineBank: {
+        icon: "🏦",
+        name: "Banco fantasma",
+        desc: "Sigue generando cuando la sala esté vacía.",
+        baseCost: 63750,
+        growth: 2.00,
+        effect: "+0.20 clicks/seg por nivel"
+      },
+      groupPulse: {
+        icon: "🌐",
+        name: "Pulso coral",
+        desc: "Más usuarios online = más clicks.",
+        baseCost: 93750,
+        growth: 2.05,
+        effect: "+0.05 clicks/seg por online"
+      },
+      sparkChain: {
+        icon: "⚡",
+        name: "Cadena de chispas",
+        desc: "Tus clicks pueden duplicarse a veces.",
+        baseCost: 52500,
+        growth: 1.90,
+        effect: "+3% cadena por nivel"
+      },
+      critHand: {
+        icon: "💥",
+        name: "Dedos críticos",
+        desc: "A veces un click sale crítico.",
+        baseCost: 70000,
+        growth: 1.95,
+        effect: "+2% crítico por nivel"
+      },
+      autoTapper: {
+        icon: "🤖",
+        name: "Autotap suave",
+        desc: "Añade clicks automáticos muy lentos.",
+        baseCost: 115000,
+        growth: 2.10,
+        effect: "+0.06 clicks/seg por nivel"
+      },
+      tempoBoost: {
+        icon: "🎼",
+        name: "Compás temporal",
+        desc: "Mejora la generación por segundo.",
+        baseCost: 85000,
+        growth: 1.92,
+        effect: "+0.07 clicks/seg por nivel"
+      },
+      streakEngine: {
+        icon: "🔥",
+        name: "Motor de racha",
+        desc: "Rinde más si sigues clicando.",
+        baseCost: 92500,
+        growth: 1.98,
+        effect: "+0.02 clicks/seg por 10 clicks recientes"
+      },
+      beaconWave: {
+        icon: "🛰️",
+        name: "Onda faro",
+        desc: "Aporta un extra por usuario online.",
+        baseCost: 102500,
+        growth: 2.00,
+        effect: "+0.03 clicks/seg por online"
+      },
+      voteSeed: {
+        icon: "🗳️",
+        name: "Semilla de voto",
+        desc: "Mejora las propuestas.",
+        baseCost: 75000,
+        growth: 1.85,
+        effect: "Mejora votaciones"
+      },
+      cosmicBoost: {
+        icon: "✨",
+        name: "Impulso cósmico",
+        desc: "Pequeño boost global.",
+        baseCost: 137500,
+        growth: 2.15,
+        effect: "+0.12 clicks/seg global"
+      },
+      timeWeaver: {
+        icon: "🧵",
+        name: "Tejedor de tiempo",
+        desc: "Convierte actividad normal en pulsos más constantes.",
+        baseCost: 121000,
+        growth: 1.88,
+        effect: "+0.10 clicks/seg por nivel"
+      },
+      offlineReservoir: {
+        icon: "🌙",
+        name: "Reservorio nocturno",
+        desc: "Refuerza lo que ocurre cuando nadie está conectado.",
+        baseCost: 152500,
+        growth: 1.96,
+        effect: "+0.40 clicks/seg offline por nivel"
+      },
+      mirrorPulse: {
+        icon: "🪞",
+        name: "Pulso espejo",
+        desc: "Refleja el valor de la sala en forma de más generación compartida.",
+        baseCost: 178750,
+        growth: 2.02,
+        effect: "+0.04 clicks/seg por online"
+      },
+      burstLens: {
+        icon: "🔎",
+        name: "Lente de ráfaga",
+        desc: "Hace que los picos luzcan más altos cuando la actividad despega.",
+        baseCost: 196250,
+        growth: 2.06,
+        effect: "+3% pico por nivel"
+      },
+      chronoLatch: {
+        icon: "⏳",
+        name: "Cierre cronológico",
+        desc: "Ajusta el flujo general para que cada segundo rinda un poco más.",
+        baseCost: 237500,
+        growth: 2.10,
+        effect: "+0.02 multiplicador global por nivel"
+      }
+    };
+
+    const STAGE = {
+      BAN_DURATIONS: [30000, 60000, 300000, 600000, 1800000, 3600000, 86400000, Infinity],
+      CHAT_LIMIT: 50,
+      MAX_CPS_INPUTS: 15,
+      OFFLINE_TOAST_MS: 5000,
+      USER_INACTIVE_MS: 7 * 24 * 60 * 60 * 1000
+    };
+
+    const MIN_ONLINE_FOR_PROPOSAL = 3;
+    const ONLINE_TIMEOUT_MS = 15000;
 
     const els = {
       app: document.getElementById("app"),
@@ -611,26 +1401,60 @@
       connectionText: document.getElementById("connectionText"),
       onlineCount: document.getElementById("onlineCount"),
       onlineTop: document.getElementById("onlineTop"),
-      sidebarClicks: document.getElementById("sidebarClicks"),
+      chatToggle: document.getElementById("chatToggle"),
+      chatPanel: document.getElementById("chatPanel"),
+      sidebarClicks: null,
+      sidebarGlobalRate: null,
+      localCpsText: document.getElementById("localCpsText"),
       openUpgrades: document.getElementById("openUpgrades"),
+      openStats: document.getElementById("openStats"),
+      closeStats: document.getElementById("closeStats"),
       upgradesPanel: document.getElementById("upgradesPanel"),
       upgradeList: document.getElementById("upgradeList"),
       sidebar: document.getElementById("sidebar"),
       sidebarToggle: document.getElementById("sidebarToggle"),
       clickButton: document.getElementById("clickButton"),
+      clickHint: document.getElementById("clickHint"),
       counter: document.getElementById("counter"),
+      counterBox: document.getElementById("counterBox"),
+      globalRateBig: document.getElementById("globalRateBig"),
+      statTotalGenerated: document.getElementById("statTotalGenerated"),
+      statGlobalClicks: document.getElementById("statGlobalClicks"),
+      statPeakRate: document.getElementById("statPeakRate"),
+      statPeakStamp: document.getElementById("statPeakStamp"),
+      statSessionClicks: document.getElementById("statSessionClicks"),
+      statOnlineNow: document.getElementById("statOnlineNow"),
+      chart: document.getElementById("rateChart"),
+      chartWindowLabel: document.getElementById("chartWindowLabel"),
+      chartTooltip: document.getElementById("chartTooltip"),
+      leaderList: document.getElementById("leaderList"),
+      mainView: document.getElementById("mainView"),
+      statsView: document.getElementById("statsView"),
       proposal: document.getElementById("proposal"),
+      proposalIcon: document.getElementById("proposalIcon"),
       proposalTitle: document.getElementById("proposalTitle"),
       proposalSub: document.getElementById("proposalSub"),
       yesCount: document.getElementById("yesCount"),
       noCount: document.getElementById("noCount"),
+      yesPercent: document.getElementById("yesPercent"),
+      noPercent: document.getElementById("noPercent"),
+      voteInfo: document.getElementById("voteInfo"),
       voteYesBtn: document.getElementById("voteYesBtn"),
       voteNoBtn: document.getElementById("voteNoBtn"),
       dismissProposal: document.getElementById("dismissProposal"),
-      voteYes: document.getElementById("voteYes"),
-      voteNo: document.getElementById("voteNo"),
+      voteYesFill: document.getElementById("voteYesFill"),
+      voteNoFill: document.getElementById("voteNoFill"),
       banner: document.getElementById("banner"),
-      themeToggle: document.getElementById("themeToggle")
+      offlineToast: document.getElementById("offlineToast"),
+      themeToggle: document.getElementById("themeToggle"),
+      onlinePanel: document.getElementById("onlinePanel"),
+      topOnlinePanel: document.getElementById("topOnlinePanel"),
+      onlineList: document.getElementById("onlineList"),
+      topOnlineList: document.getElementById("topOnlineList"),
+      chatList: document.getElementById("chatList"),
+      chatInput: document.getElementById("chatInput"),
+      chatSend: document.getElementById("chatSend"),
+      visualLayer: document.getElementById("visualLayer")
     };
 
     const state = {
@@ -640,25 +1464,51 @@
       db: null,
       app: null,
       isReady: false,
-      clicks: 0,
-      displayClicks: 0,
-      onlineUsers: {},
-      proposal: null,
-      upgrades: { clickPower: 0, passiveRate: 0, offlineBank: 0, groupPulse: 0 },
-      global: {
-        lastTickMs: Date.now(),
-        clickPower: 1,
-        passivePerSec: 0,
-        offlinePerSec: 0,
-        groupPerSec: 0,
+      presence: {},
+      users: {},
+      sharedState: {
+        globalClicks: 0,
+        totalGenerated: 0,
+        upgrades: {},
+        lastAppliedSecond: 0,
+        lastOfflineCatchupSecond: 0,
+        lastEmptyAt: null,
         activeProposalId: null,
-        prevOnlineCount: 0
+        maxPerSecond: 0,
+        maxPerSecondAt: 0
       },
+      proposal: null,
       pendingClicks: 0,
-      flushingClicks: false,
-      counterNodes: [],
+      localPendingClicks: 0,
+      localClicksSinceFlush: 0,
+      localClickTimes: [],
+      inputTimes: [],
+      clickNodes: [],
+      counterDigits: [],
+      rateCounterDigits: [],
+      globalSecondSeries: [],
+      lastRenderedPool: 0,
+      lastRenderedTotal: 0,
+      lastRenderedGlobalRate: 0,
+      lastRenderedLocalRate: 0,
       blockedUntil: Number(localStorage.getItem(LS_BLOCKED_UNTIL) || 0),
-      clickTimestamps: []
+      banTier: Number(localStorage.getItem(LS_BAN_TIER) || 0),
+      onlineCount: 0,
+      lastOnlineCount: 0,
+      lastTickSeen: 0,
+      view: "main",
+      offlineToastTimer: null,
+      tickTimer: null,
+      refreshTimer: null,
+      userCps: 0,
+      localCps: 0,
+      clickedThisSession: 0,
+      visualSeed: 0,
+      pendingOfflineToast: null,
+      passiveCarry: 0,
+      chartPoints: [],
+      chartHoverIndex: -1,
+      offlineCatchupBusy: false
     };
 
     function applyTheme(theme){
@@ -668,18 +1518,47 @@
       els.themeToggle.textContent = state.theme === "dark" ? "Oscuro" : "Claro";
     }
 
-    function sanitizeName(input) {
-      return input.trim().replace(/\s+/g, " ").slice(0, 24);
+    function sanitizeName(input){
+      return input.trim().replace(/\s+/g," ").slice(0,24);
     }
 
-    function showBanner(title, text) {
+    function sanitizeChat(input){
+      return input.trim().replace(/\s+/g," ").slice(0,180);
+    }
+
+    function formatNumber(n){
+      const value = Number.isFinite(Number(n)) ? Math.max(0, Math.floor(Number(n))) : 0;
+      return new Intl.NumberFormat("en-US").format(value);
+    }
+
+    function timeStamp(ms){
+      const d = new Date(ms);
+      return d.toLocaleString("es-ES", { dateStyle:"short", timeStyle:"medium" });
+    }
+
+    function showBanner(title, text){
       els.banner.innerHTML = `<strong>${title}</strong><p>${text}</p>`;
       els.banner.classList.add("show");
       clearTimeout(showBanner._t);
-      showBanner._t = setTimeout(() => els.banner.classList.remove("show"), 2500);
+      showBanner._t = setTimeout(() => els.banner.classList.remove("show"), 2600);
     }
 
-    function playTone(freq = 880, duration = 0.15, gainValue = 0.05) {
+    function showOfflineToast(text){
+      els.offlineToast.innerHTML = `<strong>Progreso offline</strong><p>${text}</p>`;
+      els.offlineToast.classList.add("show");
+      clearTimeout(state.offlineToastTimer);
+      state.offlineToastTimer = setTimeout(() => {
+        els.offlineToast.classList.remove("show");
+      }, STAGE.OFFLINE_TOAST_MS);
+    }
+
+function updateClickAvailability(){
+  if (!els.clickButton) return;
+  const blocked = state.blockedUntil === Infinity || (state.blockedUntil && Date.now() < state.blockedUntil);
+  els.clickButton.disabled = !!blocked;
+}
+
+    function playTone(freq = 880, duration = 0.12, gainValue = 0.04){
       try{
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         const ctx = playTone._ctx || (playTone._ctx = new AudioCtx());
@@ -694,483 +1573,1192 @@
         gain.gain.exponentialRampToValueAtTime(gainValue, ctx.currentTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
         osc.stop(ctx.currentTime + duration + 0.03);
-      }catch(e){}
+      }catch(_e){}
     }
 
-    function formatNumber(n){
-      return new Intl.NumberFormat("en-US").format(Math.max(0, Math.floor(n)));
+    function randomBetween(min, max){
+      return min + Math.random() * (max - min);
     }
 
-    function computeEffects(){
-      state.global.clickPower = 1 + (state.upgrades.clickPower || 0);
-      state.global.passivePerSec = (state.upgrades.passiveRate || 0) * 0.25;
-      state.global.offlinePerSec = (state.upgrades.offlineBank || 0) * 0.5;
-      state.global.groupPerSec = (state.upgrades.groupPulse || 0) * 0.1;
+    function createSpark(x, y, amount = 8){
+      for (let i = 0; i < amount; i++){
+        const el = document.createElement("div");
+        el.className = "spark";
+        const size = randomBetween(5, 11);
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.left = `${x + randomBetween(-18, 18)}px`;
+        el.style.top = `${y + randomBetween(-18, 18)}px`;
+        el.style.animationDelay = `${randomBetween(0, 110)}ms`;
+        els.visualLayer.appendChild(el);
+        setTimeout(() => el.remove(), 850);
+      }
+    }
+
+    function createPopText(text, x, y){
+      const el = document.createElement("div");
+      el.className = "click-pop";
+      el.textContent = text;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      els.visualLayer.appendChild(el);
+      setTimeout(() => el.remove(), 940);
+    }
+
+    function pulseElement(el){ return; }
+
+    function recordLocalClicks(amount){
+      const now = Date.now();
+      const count = Math.max(1, Math.floor(Number(amount) || 1));
+      for (let i = 0; i < count; i++) state.localClickTimes.push(now);
+      state.inputTimes.push(now);
+      state.localClickTimes = state.localClickTimes.filter((t) => now - t < 1000);
+      state.inputTimes = state.inputTimes.filter((t) => now - t < 1000);
+      computeLocalCps();
+    }
+
+    function isTypingTarget(target){
+      if (!target) return false;
+      return !!target.closest("input, textarea, [contenteditable='true'], [contenteditable=''], .chat-input");
     }
 
     function upgradeCost(id, level){
-      const u = DEFAULT_UPGRADES[id];
+      const u = UPGRADE_DEFS[id];
       return Math.floor(u.baseCost * Math.pow(u.growth, level));
     }
 
-    function clearCounter() {
-      els.counter.replaceChildren();
-      state.counterNodes = [];
+    function getUpgradeLevel(upgrades, id){
+      return Number(upgrades?.[id] || 0);
     }
 
-    function createDigitNode(initialDigit) {
+    function calcEffects(){
+      const up = state.sharedState.upgrades || {};
+      const get = (id) => getUpgradeLevel(up, id);
+      const clickPower = 1 + get("clickPower");
+      const passive = get("passiveRate") * 0.18
+        + get("tempoBoost") * 0.07
+        + get("cosmicBoost") * 0.12
+        + get("timeWeaver") * 0.10
+        + get("burstLens") * 0.02;
+      const offline = get("offlineBank") * 0.20
+        + get("offlineReservoir") * 0.40;
+      const group = get("groupPulse") * 0.05
+        + get("beaconWave") * 0.03
+        + get("mirrorPulse") * 0.04;
+      const autoTap = get("autoTapper") * 0.06;
+      const streak = get("streakEngine") * 0.02
+        + get("chronoLatch") * 0.005;
+      const clickChance = Math.min(0.45, get("sparkChain") * 0.03);
+      const critChance = Math.min(0.35, get("critHand") * 0.02);
+      const critMult = 2 + Math.min(6, get("critHand") * 0.2) + get("burstLens") * 0.05;
+      const voteBoost = get("voteSeed");
+      const outputBoost = 1 + Math.min(0.45, get("cosmicBoost") * 0.01 + get("tempoBoost") * 0.01 + get("beaconWave") * 0.01 + get("chronoLatch") * 0.02);
+      return {
+        clickPower,
+        passive,
+        offline,
+        group,
+        autoTap,
+        streak,
+        clickChance,
+        critChance,
+        critMult,
+        voteBoost,
+        outputBoost
+      };
+    }
+
+
+    function clearCounter(store){
+      store.length = 0;
+    }
+
+    function createDigitNode(initialDigit){
       const digitWrap = document.createElement("span");
       digitWrap.className = "digit";
       const track = document.createElement("span");
       track.className = "digit-track";
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 10; i++){
         const s = document.createElement("span");
         s.textContent = String(i);
         track.appendChild(s);
       }
       digitWrap.appendChild(track);
-
       const setDigit = (digit, animate = false) => {
         const next = Math.max(0, Math.min(9, Number(digit) || 0));
         const current = Number(digitWrap.dataset.current ?? next) || 0;
         if (current === next && animate) return;
-
-        if (!animate) {
+        if (!animate){
           track.style.transition = "none";
           track.style.transform = `translateY(-${next * 100}%)`;
           track.getBoundingClientRect();
-          track.style.transition = "transform var(--digit-speed) cubic-bezier(.2,.9,.2,1)";
-        } else {
+          track.style.transition = "transform var(--digit-speed) var(--ease)";
+        }else{
           track.style.transition = "none";
           track.style.transform = `translateY(-${current * 100}%)`;
           track.getBoundingClientRect();
           requestAnimationFrame(() => {
-            track.style.transition = "transform var(--digit-speed) cubic-bezier(.2,.9,.2,1)";
+            track.style.transition = "transform var(--digit-speed) var(--ease)";
             track.style.transform = `translateY(-${next * 100}%)`;
           });
         }
-
         digitWrap.dataset.current = String(next);
       };
-
       setDigit(initialDigit, false);
       return { el: digitWrap, track, current: Math.max(0, Math.min(9, Number(initialDigit) || 0)), setDigit };
     }
 
-    function buildCounter(formatted) {
-      clearCounter();
+    function buildCounter(el, store, formatted){
+      clearCounter(store);
+      el.replaceChildren();
       [...formatted].forEach((ch) => {
-        if (ch === ",") {
+        if (ch === ","){
           const sep = document.createElement("span");
           sep.className = "comma";
           sep.textContent = ",";
-          els.counter.appendChild(sep);
-          state.counterNodes.push({ type: "comma", el: sep });
+          el.appendChild(sep);
+          store.push({ type: "comma", el: sep });
           return;
         }
         const node = createDigitNode(Number(ch) || 0);
-        els.counter.appendChild(node.el);
-        state.counterNodes.push({ type: "digit", ...node });
+        el.appendChild(node.el);
+        store.push({ type: "digit", ...node });
       });
-      state.displayClicks = Number(formatted.replace(/,/g, "")) || 0;
     }
 
-    function updateCounter(value) {
+    function updateCounter(el, store, value){
       const formatted = formatNumber(value);
       const digitsOnly = formatted.replace(/,/g, "");
-      const currentDigitsOnly = state.counterNodes
-        .filter(n => n.type === "digit")
-        .map(n => String(n.current ?? Number(n.el?.dataset.current ?? 0) ?? 0))
-        .join("");
-
-      if (!state.counterNodes.length || currentDigitsOnly.length !== digitsOnly.length) {
-        buildCounter(formatted);
-      } else {
-        let digitIndex = 0;
-        for (const ch of formatted) {
+      const currentDigits = store.filter((n) => n.type === "digit");
+      if (!store.length || currentDigits.length !== digitsOnly.length){
+        buildCounter(el, store, formatted);
+      }else{
+        let idx = 0;
+        for (const ch of formatted){
           if (ch === ",") continue;
-          const node = state.counterNodes.filter(n => n.type === "digit")[digitIndex];
+          const node = currentDigits[idx];
           const next = Number(ch) || 0;
-          if (node && node.current !== next) {
+          if (node && node.current !== next){
             node.setDigit(next, true);
             node.current = next;
           }
-          digitIndex++;
+          idx++;
         }
-        state.displayClicks = Number(digitsOnly) || 0;
       }
-      els.sidebarClicks.textContent = formatted;
     }
 
-    function updateUpgradeButtons(){
+    function updateBigNumber(el, value){
+      if (!el) return;
+      el.textContent = formatNumber(value);
+    }
+
+
+    function updateSidebarNumbers(){
+  const fx = calcEffects();
+  const improvementRate = Math.max(0, (fx.passive + fx.offline + fx.group * Math.max(0, state.onlineCount) + fx.autoTap + fx.streak + (fx.outputBoost - 1)));
+  state.localCps = Math.max(0, Math.round((state.localClickTimes.length + improvementRate) * 10) / 10);
+  if (els.localCpsText) els.localCpsText.textContent = formatNumber(state.localCps);
+}
+
+    function renderUpgradeList(){
+
+      const upgrades = state.sharedState.upgrades || {};
+      const items = Object.keys(UPGRADE_DEFS)
+        .map((id) => ({ id, cost: upgradeCost(id, Number(upgrades[id] || 0)) }))
+        .sort((a, b) => a.cost - b.cost || UPGRADE_DEFS[a.id].baseCost - UPGRADE_DEFS[b.id].baseCost || UPGRADE_DEFS[a.id].name.localeCompare(UPGRADE_DEFS[b.id].name))
+        .map((entry) => entry.id);
       els.upgradeList.innerHTML = "";
-      Object.keys(DEFAULT_UPGRADES).forEach((id) => {
-        const level = state.upgrades[id] || 0;
+      items.forEach((id) => {
+        const data = UPGRADE_DEFS[id];
+        const level = Number(upgrades[id] || 0);
         const cost = upgradeCost(id, level);
-        const u = DEFAULT_UPGRADES[id];
-        const item = document.createElement("div");
-        item.className = "upgrade-item";
-        item.innerHTML = `
-          <h4>${u.name} <span style="color:var(--muted);font-weight:700;">niv. ${level}</span></h4>
-          <p>${u.desc}</p>
+        const canBuy = state.sharedState.globalClicks >= cost && state.proposal == null && state.onlineCount >= MIN_ONLINE_FOR_PROPOSAL;
+        const el = document.createElement("div");
+        el.className = "upgrade-item" + (canBuy ? "" : " unaffordable");
+        el.innerHTML = `
+          <h4><span class="upgrade-icon">${data.icon}</span><span>${data.name} <span style="color:var(--muted);font-weight:700;">niv. ${level}</span></span></h4>
+          <p>${data.desc}</p>
           <div class="meta">
             <div>
-              <div class="muted-small">${u.effect}</div>
+              <div class="muted-small">${data.effect}</div>
               <div class="cost">${formatNumber(cost)} clicks</div>
             </div>
-            <button class="buy-btn">Comprar</button>
+            <button class="buy-btn" type="button">${state.proposal ? "Votación" : state.onlineCount < MIN_ONLINE_FOR_PROPOSAL ? `Requiere ${MIN_ONLINE_FOR_PROPOSAL}+ online` : canBuy ? "Proponer" : "Faltan clicks"}</button>
           </div>
         `;
-        const btn = item.querySelector("button");
-        const hasEnough = state.clicks >= cost;
-        const onlineEnough = Object.keys(state.onlineUsers).length >= 3;
-        btn.disabled = !hasEnough || !onlineEnough || !!state.global.activeProposalId;
-        btn.textContent = state.global.activeProposalId ? "Votación" : (onlineEnough ? "Proponer" : "Online < 3");
+        const btn = el.querySelector("button");
+        btn.disabled = !canBuy;
         btn.addEventListener("click", () => proposePurchase(id));
-        els.upgradeList.appendChild(item);
+        els.upgradeList.appendChild(el);
       });
+    }
+
+    function renderOnlinePanels(){
+      const presence = state.presence || {};
+      const userEntries = Object.entries(presence)
+        .filter(([, p]) => isPresenceActive(p))
+        .map(([uid, p]) => {
+          const user = state.users[uid] || {};
+          const cps = Number(user.cpsCurrent || 0);
+          return {
+            uid,
+            name: p?.name || user?.name || "Desconocido",
+            cps,
+            total: Number(user.totalClicks || 0),
+            lastSeen: Number(user.lastSeen || 0)
+          };
+        })
+        .sort((a, b) => b.cps - a.cps || b.total - a.total || a.name.localeCompare(b.name));
+
+      const html = userEntries.length ? userEntries.map((u) => `
+        <div class="online-row">
+          <div class="online-name">👤 ${escapeHtml(u.name)}</div>
+          <div class="online-cps">${formatNumber(u.cps)}<small>c/s</small></div>
+        </div>
+      `).join("") : `<div class="online-row"><div class="online-name">Sin usuarios</div><div class="online-cps">0<small>c/s</small></div></div>`;
+
+      els.onlineList.innerHTML = html;
+      els.topOnlineList.innerHTML = html;
+    }
+
+    function escapeHtml(text){
+      return String(text).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#39;"
+      })[m]);
+    }
+
+    function isPresenceActive(p){
+      if (!p || p.online === false) return false;
+      const now = Date.now();
+      const ts = Number(p.at || p.lastSeen || 0);
+      if (!ts) return true;
+      return (now - ts) <= ONLINE_TIMEOUT_MS;
+    }
+
+    function countOnlinePresence(){
+      return Object.values(state.presence || {}).filter(isPresenceActive).length;
+    }
+
+    function formatClockTimeFromSeconds(sec){
+      return new Date(sec * 1000).toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    function renderChartTooltip(point, clientX, clientY){
+      if (!els.chartTooltip || !els.chart) return;
+      if (!point){
+        els.chartTooltip.hidden = true;
+        els.chartTooltip.textContent = "";
+        state.chartHoverIndex = -1;
+        return;
+      }
+      const tooltipTime = formatClockTimeFromSeconds(point.sec);
+      els.chartTooltip.hidden = false;
+      els.chartTooltip.innerHTML = `<strong>${tooltipTime}</strong><div>${formatNumber(point.value)} cps</div>`;
+      const wrap = els.chart.parentElement;
+      const rect = wrap.getBoundingClientRect();
+      const tooltipRect = els.chartTooltip.getBoundingClientRect();
+      const gap = 12;
+      let left = clientX - rect.left + gap;
+      let top = clientY - rect.top - tooltipRect.height - gap;
+      if (left + tooltipRect.width > rect.width - 8) left = rect.width - tooltipRect.width - 8;
+      if (left < 8) left = 8;
+      if (top < 8) top = clientY - rect.top + gap;
+      if (top + tooltipRect.height > rect.height - 8) top = rect.height - tooltipRect.height - 8;
+      els.chartTooltip.style.left = `${left}px`;
+      els.chartTooltip.style.top = `${top}px`;
+    }
+
+    function renderChat(messages){
+      const list = Array.isArray(messages) ? messages : [];
+      els.chatList.innerHTML = list.length ? list.map((m) => `
+        <div class="chat-row">
+          <div class="chat-topline">
+            <span class="chat-name">${escapeHtml(m.name || "Anon")}</span>
+            <span>${new Date(Number(m.ts || Date.now())).toLocaleTimeString("es-ES", { hour:"2-digit", minute:"2-digit" })}</span>
+          </div>
+          <div class="chat-text">${escapeHtml(m.text || "")}</div>
+        </div>
+      `).join("") : `<div class="chat-row"><div class="chat-text" style="color:var(--muted)">Aún no hay mensajes.</div></div>`;
+      els.chatList.scrollTop = els.chatList.scrollHeight;
     }
 
     function renderProposal(){
       const p = state.proposal;
-      if (!p) {
+      if (!p){
         els.proposal.classList.remove("show");
         return;
       }
-      const onlineCount = Object.keys(state.onlineUsers).length;
+      const data = UPGRADE_DEFS[p.upgradeId] || { icon:"✨", name:p.upgradeId };
+      const onlineCount = Math.max(1, countOnlinePresence() || state.onlineCount || 0);
+      const yes = Number(p.yesCount || 0);
+      const no = Number(p.noCount || 0);
+      const totalVotes = yes + no;
+      const yesPercent = totalVotes ? (yes / totalVotes) * 100 : 50;
+      const noPercent = totalVotes ? (no / totalVotes) * 100 : 50;
       const threshold = Math.floor(onlineCount / 2) + 1;
       els.proposal.classList.add("show");
-      els.proposalTitle.textContent = `${p.proposerName} propone ${DEFAULT_UPGRADES[p.upgradeId]?.name || p.upgradeId}`;
-      els.proposalSub.textContent = `${threshold} votos para decidir`;
-      els.yesCount.textContent = String(p.yesCount || 0);
-      els.noCount.textContent = String(p.noCount || 0);
-
+      els.proposalIcon.textContent = data.icon;
+      els.proposalTitle.textContent = `${p.proposerName} propone ${data.name}`;
+      els.proposalSub.textContent = `${threshold} votos para decidir · coste ${formatNumber(p.cost)} clicks`;
+      els.yesCount.textContent = String(yes);
+      els.noCount.textContent = String(no);
+      els.yesPercent.textContent = `${Math.round(yesPercent)}%`;
+      els.noPercent.textContent = `${Math.round(noPercent)}%`;
+      els.voteYesFill.style.width = `${yesPercent}%`;
+      els.voteNoFill.style.width = `${noPercent}%`;
+      els.voteInfo.textContent = totalVotes ? `${totalVotes} voto${totalVotes === 1 ? "" : "s"} emitido${totalVotes === 1 ? "" : "s"}` : "Esperando votos";
       const alreadyVoted = p.voters?.[state.uid];
       els.voteYesBtn.disabled = !!alreadyVoted;
       els.voteNoBtn.disabled = !!alreadyVoted;
       els.voteYesBtn.textContent = alreadyVoted ? "Votado" : "Sí";
       els.voteNoBtn.textContent = alreadyVoted ? "Votado" : "No";
 
-      if ((Number(p.yesCount || 0) >= threshold) && threshold > 0) finalizeProposal("yes");
-      if ((Number(p.noCount || 0) >= threshold) && threshold > 0) finalizeProposal("no");
+      const elapsed = Date.now() - Number(p.createdAt || Date.now());
+      if (totalVotes >= onlineCount || elapsed >= 20000 || yes >= threshold || no >= threshold){
+        const winner = yes === no ? (p.firstVoteChoice || "yes") : (yes > no ? "yes" : "no");
+        finalizeProposal(winner);
+      }
     }
 
-    async function initFirebase(){
-      if (state.isReady || !state.name) return;
-      state.app = initializeApp(firebaseConfig);
-      state.db = getDatabase(state.app);
-      state.isReady = true;
-      els.connectionText.textContent = "OK";
+    function computeLocalCps(){
+      const now = Date.now();
+      state.localClickTimes = state.localClickTimes.filter((t) => now - t < 1000);
+      const fx = calcEffects();
+      const improvementRate = Math.max(0, fx.passive + fx.offline + fx.group * Math.max(0, state.onlineCount) + fx.autoTap + fx.streak + (fx.outputBoost - 1));
+      state.localCps = Math.max(0, Math.round((state.localClickTimes.length + improvementRate) * 10) / 10);
+      if (els.localCpsText) els.localCpsText.textContent = formatNumber(state.localCps);
+    }
 
-      const connectedRef = ref(state.db, ".info/connected");
-      onValue(connectedRef, async (snap) => {
-        if (snap.val() === true) {
-          const myPresence = ref(state.db, `presence/${state.uid}`);
-          await set(myPresence, { name: state.name, online: true, at: Date.now() });
-          onDisconnect(myPresence).remove();
-          await set(ref(state.db, `users/${state.uid}`), { name: state.name, lastSeen: Date.now() });
-        }
+    function pushLocalClickTimestamp(){
+      const now = Date.now();
+      state.localClickTimes.push(now);
+      state.inputTimes.push(now);
+      state.localClickTimes = state.localClickTimes.filter((t) => now - t < 1000);
+      state.inputTimes = state.inputTimes.filter((t) => now - t < 1000);
+      state.localCps = state.localClickTimes.length;
+    }
+
+    function checkAntiCheat(){
+      const now = Date.now();
+      state.inputTimes = state.inputTimes.filter((t) => now - t < 1000);
+      if (state.inputTimes.length <= STAGE.MAX_CPS_INPUTS) return true;
+      const tier = Math.min(STAGE.BAN_DURATIONS.length - 1, state.banTier);
+      const duration = STAGE.BAN_DURATIONS[tier];
+      state.banTier = Math.min(STAGE.BAN_DURATIONS.length - 1, state.banTier + 1);
+      localStorage.setItem(LS_BAN_TIER, String(state.banTier));
+      if (duration === Infinity){
+        state.blockedUntil = Infinity;
+        localStorage.setItem(LS_BLOCKED_UNTIL, String(Number.MAX_SAFE_INTEGER));
+        els.clickButton.disabled = true;
+        showBanner("Anticheat", "Baneo permanente por exceso de inputs.");
+      }else{
+        state.blockedUntil = now + duration;
+        localStorage.setItem(LS_BLOCKED_UNTIL, String(state.blockedUntil));
+        els.clickButton.disabled = true;
+        showBanner("Anticheat", `Bloqueado ${Math.round(duration / 1000)}s por exceso de inputs.`);
+        setTimeout(() => {
+          if (Date.now() >= state.blockedUntil){
+            state.blockedUntil = 0;
+            localStorage.removeItem(LS_BLOCKED_UNTIL);
+            if (Number(localStorage.getItem(LS_BLOCKED_UNTIL) || 0) <= Date.now()){
+              els.clickButton.disabled = false;
+            }
+          }
+        }, duration + 50);
+      }
+      return false;
+    }
+
+    function hasActiveTypingFocus(){
+      return isTypingTarget(document.activeElement) || isTypingTarget(event?.target);
+    }
+
+    async function incrementUserStats(extraClicks = 1){
+      if (!state.db || !state.isReady || !state.name) return;
+      const now = Date.now();
+      const userRef = ref(state.db, `users/${state.uid}`);
+      await runTransaction(userRef, (cur) => {
+        const base = cur || {};
+        base.name = state.name;
+        base.totalClicks = Number(base.totalClicks || 0) + extraClicks;
+        base.lastSeen = now;
+        base.cpsCurrent = state.localCps;
+        base.uid = state.uid;
+        base.online = true;
+        return base;
       });
-
-      onValue(ref(state.db, "presence"), async (snap) => {
-        const previous = Object.keys(state.onlineUsers || {}).length;
-        state.onlineUsers = snap.val() || {};
-        const current = Object.keys(state.onlineUsers).length;
-        els.onlineCount.textContent = String(current);
-        els.onlineTop.textContent = String(current);
-        updateUpgradeButtons();
-
-        if (previous > 0 && current === 0) {
-          await markEmptyNow();
-        } else if (previous === 0 && current > 0) {
-          await settleOfflineClicks();
-        }
-
-        state.global.prevOnlineCount = current;
+      const contribRef = ref(state.db, `contributors/${state.uid}`);
+      await runTransaction(contribRef, (cur) => {
+        const base = cur || {};
+        base.name = state.name;
+        base.totalClicks = Number(base.totalClicks || 0) + extraClicks;
+        base.lastSeen = now;
+        base.cpsCurrent = state.localCps;
+        base.uid = state.uid;
+        return base;
       });
+    }
 
-      onValue(ref(state.db, "state"), (snap) => {
-        const v = snap.val() || {};
-        const remoteClicks = Number(v.globalClicks || 0);
-        state.clicks = remoteClicks;
-        state.upgrades = {
-          clickPower: Number(v.upgrades?.clickPower || 0),
-          passiveRate: Number(v.upgrades?.passiveRate || 0),
-          offlineBank: Number(v.upgrades?.offlineBank || 0),
-          groupPulse: Number(v.upgrades?.groupPulse || 0)
-        };
-        state.global.lastTickMs = Number(v.lastTickMs || Date.now());
-        state.global.activeProposalId = v.activeProposalId || null;
-        computeEffects();
-        if (remoteClicks >= state.displayClicks) {
-          updateCounter(remoteClicks);
-        }
-        updateUpgradeButtons();
+    async function addPendingClicks(amount){
+      if (!state.db || !state.isReady) return;
+      await runTransaction(ref(state.db, "pendingClicks"), (cur) => Number(cur || 0) + amount);
+    }
+
+    function spawnClickEffects(amount, x, y, label = null){
+      pulseElement(els.clickButton);
+      createSpark(x, y, Math.min(8, 3 + Math.ceil(amount / 3)));
+      if (label) createPopText(label, x, y - 10);
+    }
+
+    async function queueClick(source = "button"){
+      if (state.view === "stats") return;
+      const now = Date.now();
+      if (state.lastClickAt && now - state.lastClickAt < 35) return;
+      state.lastClickAt = now;
+      if (state.blockedUntil && state.blockedUntil !== Infinity && Date.now() < state.blockedUntil){
+        const remain = Math.ceil((state.blockedUntil - Date.now()) / 1000);
+        showBanner("Bloqueado", `Espera ${remain}s.`);
+        return;
+      }
+      if (state.blockedUntil === Infinity){
+        showBanner("Anticheat", "Baneo permanente activo.");
+        return;
+      }
+      if (!checkAntiCheat()) return;
+
+      const clickLevel = Number(state.sharedState.upgrades?.clickPower || 0);
+      const amount = Math.max(1, 1 + clickLevel);
+
+      recordLocalClicks(amount);
+      state.clickedThisSession += amount;
+      state.localClicksSinceFlush += amount;
+
+      if (state.db && state.isReady){
+        await addPendingClicks(amount);
+        await incrementUserStats(amount);
+      }else{
+        state.sharedState.globalClicks = Number(state.sharedState.globalClicks || 0) + amount;
+        state.sharedState.totalGenerated = Number(state.sharedState.totalGenerated || 0) + amount;
+        state.sharedState.maxPerSecond = Math.max(Number(state.sharedState.maxPerSecond || 0), amount);
+        state.sharedState.maxPerSecondAt = state.sharedState.maxPerSecondAt || Date.now();
+        updateCounter(els.counter, state.counterDigits, state.sharedState.globalClicks);
+        updateBigNumber(els.globalRateBig, state.rateCounterDigits, state.lastRenderedGlobalRate || 0);
+      }
+
+      const rect = source === "button" ? els.clickButton.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+      spawnClickEffects(amount, rect.left + rect.width / 2, rect.top + rect.height / 2, `+${formatNumber(amount)}`);
+    }
+
+    async function heartbeatUser(){
+
+      if (!state.db || !state.isReady || !state.name) return;
+      const cps = state.localCps;
+      await update(ref(state.db, `users/${state.uid}`), {
+        name: state.name,
+        lastSeen: Date.now(),
+        cpsCurrent: cps,
+        uid: state.uid,
+        online: true
       });
+    }
 
-      onValue(ref(state.db, "proposal"), (snap) => {
-        state.proposal = snap.val();
-        renderProposal();
+    function updateGlobalRateHistory(delta, sec = Math.floor(Date.now() / 1000)){
+      const last = state.globalSecondSeries[state.globalSecondSeries.length - 1];
+      if (last && last.sec === sec){
+        last.value += delta;
+      }else{
+        state.globalSecondSeries.push({ sec, value: delta });
+      }
+
+      const trimmed = state.globalSecondSeries.slice(-60);
+      const firstSec = trimmed.length ? trimmed[0].sec : sec;
+      for (let missing = firstSec + 1; missing < sec; missing++){
+        const found = trimmed.find((entry) => entry.sec === missing);
+        if (!found) trimmed.push({ sec: missing, value: 0 });
+      }
+      trimmed.sort((a, b) => a.sec - b.sec);
+      state.globalSecondSeries = trimmed.slice(-60);
+
+      const total = state.globalSecondSeries.reduce((a, b) => a + Number(b.value || 0), 0);
+      state.lastRenderedGlobalRate = total;
+      updateSidebarNumbers();
+      updateCounter(els.globalRateBig, state.rateCounterDigits, total);
+      if (els.statSessionClicks) els.statSessionClicks.textContent = formatNumber(total);
+      if (delta > (state.sharedState.maxPerSecond || 0)){
+        state.sharedState.maxPerSecond = delta;
+        state.sharedState.maxPerSecondAt = sec * 1000;
+      }
+      renderChart();
+    }
+
+    async function flushLocalQueuedClicks(){
+      const amount = Math.max(0, Math.floor(Number(state.localPendingClicks || 0)));
+      if (amount <= 0) return 0;
+      state.localPendingClicks = 0;
+      await runTransaction(ref(state.db, "state"), (cur) => {
+        if (!cur) return cur;
+        cur.globalClicks = Number(cur.globalClicks || 0) + amount;
+        cur.totalGenerated = Number(cur.totalGenerated || 0) + amount;
+        cur.maxPerSecond = Math.max(Number(cur.maxPerSecond || 0), amount);
+        if (amount >= Number(cur.maxPerSecond || 0)) cur.maxPerSecondAt = Date.now();
+        return cur;
       });
+      return amount;
+    }
 
-      const stateRef = ref(state.db, "state");
-      const current = await get(stateRef);
-      if (!current.exists()) {
-        await set(stateRef, {
-          globalClicks: 0,
-          upgrades: { clickPower: 0, passiveRate: 0, offlineBank: 0, groupPulse: 0 },
-          lastTickMs: Date.now(),
-          lastEmptyAt: null,
-          activeProposalId: null
+    async function settleGlobalTick(){
+      if (!state.db || !state.isReady) return;
+      const sec = Math.floor(Date.now() / 1000);
+      const tickRef = ref(state.db, "state/lastAppliedSecond");
+      const tx = await runTransaction(tickRef, (current) => {
+        const last = Number(current || 0);
+        if (last >= sec) return current;
+        return sec;
+      });
+      if (!tx.committed) return;
+
+      const pendingSnap = await get(ref(state.db, "pendingClicks"));
+      const pending = Number(pendingSnap.val() || 0);
+      const fx = calcEffects();
+      const onlineCount = Math.max(0, state.onlineCount);
+      const passiveExact = Math.max(0, fx.passive + fx.offline + fx.group * onlineCount + fx.autoTap + fx.streak + fx.outputBoost * 0.2);
+      state.passiveCarry = Math.max(0, Number(state.passiveCarry || 0) + passiveExact);
+      const passiveGain = Math.floor(state.passiveCarry);
+      state.passiveCarry -= passiveGain;
+
+      const tickGain = pending + passiveGain;
+
+      if (tickGain > 0){
+        await runTransaction(ref(state.db, "state"), (cur) => {
+          if (!cur) return cur;
+          const previousMax = Number(cur.maxPerSecond || 0);
+          cur.globalClicks = Number(cur.globalClicks || 0) + tickGain;
+          cur.totalGenerated = Number(cur.totalGenerated || 0) + tickGain;
+          cur.maxPerSecond = Math.max(previousMax, tickGain);
+          if (tickGain > previousMax) cur.maxPerSecondAt = Date.now();
+          cur.lastTickSecond = sec;
+          return cur;
         });
+        await set(ref(state.db, "pendingClicks"), 0);
+      }else{
+        await update(ref(state.db, "state"), { lastTickSecond: sec });
+      }
+      updateGlobalRateHistory(tickGain, sec);
+      await heartbeatUser();
+    }
+
+    async function catchUpOfflineClicks(){
+      if (!state.db || !state.isReady || state.offlineCatchupBusy) return 0;
+      state.offlineCatchupBusy = true;
+      try{
+        const nowSec = Math.floor(Date.now() / 1000);
+        const startSecond = Math.max(
+          Number(state.sharedState.lastAppliedSecond || 0),
+          Number(state.sharedState.lastOfflineCatchupSecond || 0)
+        );
+        const elapsedSeconds = Math.max(0, nowSec - startSecond);
+        if (elapsedSeconds <= 0) return 0;
+
+        const fx = calcEffects();
+        // Usar la misma fórmula que en attemptResumeOfflineToast: offline + passive * 0.25
+        const offlinePerSecond = Math.max(0, fx.offline + fx.passive * 0.25);
+        const offlineGain = Math.floor(elapsedSeconds * offlinePerSecond);
+        if (offlineGain <= 0){
+          const tx = await runTransaction(ref(state.db, "state"), (cur) => {
+            if (!cur) return cur;
+            const currentLastOffline = Number(cur.lastOfflineCatchupSecond || 0);
+            cur.lastOfflineCatchupSecond = Math.max(currentLastOffline, nowSec);
+            return cur;
+          });
+          if (tx.committed) state.sharedState.lastOfflineCatchupSecond = nowSec;
+          return 0;
+        }
+
+        const tx = await runTransaction(ref(state.db, "state"), (cur) => {
+          if (!cur) return cur;
+          const currentLastApplied = Number(cur.lastAppliedSecond || 0);
+          const currentLastOffline = Number(cur.lastOfflineCatchupSecond || 0);
+          const appliedStart = Math.max(currentLastApplied, currentLastOffline);
+          if (appliedStart >= nowSec) return cur;
+          const currentElapsed = Math.max(0, nowSec - appliedStart);
+          const currentGain = Math.floor(currentElapsed * offlinePerSecond);
+          if (currentGain <= 0){
+            cur.lastOfflineCatchupSecond = Math.max(currentLastOffline, nowSec);
+            return cur;
+          }
+          cur.globalClicks = Number(cur.globalClicks || 0) + currentGain;
+          cur.totalGenerated = Number(cur.totalGenerated || 0) + currentGain;
+          cur.lastOfflineCatchupSecond = nowSec;
+          return cur;
+        });
+        if (!tx.committed) return 0;
+        state.sharedState.lastOfflineCatchupSecond = nowSec;
+        return offlineGain;
+      }finally{
+        state.offlineCatchupBusy = false;
       }
     }
 
     async function markEmptyNow(){
       if (!state.db) return;
-      const now = Date.now();
       await runTransaction(ref(state.db, "state"), (current) => {
         if (!current) return current;
-        current.lastEmptyAt = now;
-        return current;
-      });
-    }
-
-    async function settleOfflineClicks(){
-      if (!state.db) return;
-      const now = Date.now();
-      await runTransaction(ref(state.db, "state"), (current) => {
-        if (!current || !current.lastEmptyAt) return current;
-        const elapsed = Math.max(0, now - Number(current.lastEmptyAt || now));
-        const upgrades = current.upgrades || {};
-        const offlinePerSec = (Number(upgrades.offlineBank || 0) * 0.5) + (Number(upgrades.groupPulse || 0) * 0.1);
-        const gain = Math.floor((elapsed / 1000) * offlinePerSec);
-        current.lastEmptyAt = null;
-        if (gain > 0) {
-          current.globalClicks = Number(current.globalClicks || 0) + gain;
-        }
-        return current;
-      });
-    }
-
-    function hasClickBlocked(){
-      const now = Date.now();
-      return now < state.blockedUntil;
-    }
-
-    function registerClickRate(){
-      const now = Date.now();
-      state.clickTimestamps = state.clickTimestamps.filter(t => now - t < 1000);
-      state.clickTimestamps.push(now);
-      if (state.clickTimestamps.length > 50) {
-        state.blockedUntil = now + 30000;
-        localStorage.setItem(LS_BLOCKED_UNTIL, String(state.blockedUntil));
-        els.clickButton.disabled = true;
-        showBanner("Pausa", "Demasiados clicks por segundo.");
-        setTimeout(() => {
-          if (Date.now() >= state.blockedUntil) {
-            state.blockedUntil = 0;
-            localStorage.removeItem(LS_BLOCKED_UNTIL);
-            els.clickButton.disabled = false;
-          }
-        }, 30000);
-        return false;
-      }
-      return true;
-    }
-
-    async function flushPendingClicks(){
-      if (!state.db || !state.pendingClicks || state.pendingClicks <= 0) return;
-      if (state.flushingClicks) return;
-
-      const clicksToAdd = state.pendingClicks;
-      state.pendingClicks = 0;
-      state.flushingClicks = true;
-
-      const result = await runTransaction(ref(state.db, "state"), (current) => {
-        if (!current) return current;
-        current.globalClicks = Number(current.globalClicks || 0) + clicksToAdd;
-        current.lastTickMs = Date.now();
-        return current;
-      });
-
-      state.flushingClicks = false;
-
-      if (!result.committed) {
-        state.pendingClicks += clicksToAdd;
-      }
-    }
-
-    function queueClick(){
-      if (!state.isReady || !state.db) return;
-      if (hasClickBlocked()) {
-        const remain = Math.ceil((state.blockedUntil - Date.now()) / 1000);
-        showBanner("Bloqueado", `Espera ${remain}s.`);
-        return;
-      }
-      if (!registerClickRate()) return;
-      state.pendingClicks += state.global.clickPower;
-    }
-
-    function upgradeRateWithOnline() {
-      return Object.keys(state.onlineUsers).length * 0.1;
-    }
-
-    async function catchUpPassive(){
-      if (!state.isReady || !state.db) return;
-      const now = Date.now();
-      const stateRef = ref(state.db, "state");
-      await runTransaction(stateRef, (current) => {
-        if (!current) return current;
-        const last = Number(current.lastTickMs || now);
-        const elapsed = Math.max(0, now - last);
-        const upgrades = current.upgrades || {};
-        const passivePerSec = (Number(upgrades.passiveRate || 0) * 0.25)
-          + (Number(upgrades.offlineBank || 0) * 0.5)
-          + (Number(upgrades.groupPulse || 0) * Math.max(0, Object.keys(state.onlineUsers).length) * 0.1);
-        const gain = Math.floor((elapsed / 1000) * passivePerSec);
-        if (gain <= 0) return current;
-        current.globalClicks = Number(current.globalClicks || 0) + gain;
-        current.lastTickMs = now;
+        current.lastEmptyAt = Date.now();
         return current;
       });
     }
 
     async function proposePurchase(upgradeId){
-      if (!state.isReady || !state.db) return;
-      const onlineCount = Object.keys(state.onlineUsers).length;
-      const level = state.upgrades[upgradeId] || 0;
+      if (!state.db || !state.isReady) return;
+      const level = Number(state.sharedState.upgrades?.[upgradeId] || 0);
       const cost = upgradeCost(upgradeId, level);
-
-      if (state.clicks < cost) {
-        showBanner("No alcanza", `${formatNumber(cost)} clicks para ${DEFAULT_UPGRADES[upgradeId].name}.`);
+      if (state.sharedState.globalClicks < cost){
+        showBanner("No alcanza", `${formatNumber(cost)} clicks para ${UPGRADE_DEFS[upgradeId].name}.`);
         return;
       }
-      if (onlineCount < 3) {
-        showBanner("Faltan personas", "Se necesitan 3 online.");
+      const liveOnline = countOnlinePresence();
+      state.onlineCount = liveOnline;
+      if (liveOnline < MIN_ONLINE_FOR_PROPOSAL){
+        showBanner("Sin sala", `Necesitas ${MIN_ONLINE_FOR_PROPOSAL} usuarios online o más.`);
         return;
       }
-
+      const proposalId = crypto.randomUUID();
       const stateRef = ref(state.db, "state");
-      const result = await runTransaction(stateRef, (current) => {
+      const tx = await runTransaction(stateRef, (current) => {
         if (!current) return current;
         if (current.activeProposalId) return current;
-        const curClicks = Number(current.globalClicks || 0);
-        if (curClicks < cost) return current;
-        current.activeProposalId = crypto.randomUUID();
-        current.pendingProposal = {
-          id: current.activeProposalId,
+        if (Number(current.globalClicks || 0) < cost) return current;
+        current.activeProposalId = proposalId;
+        current.proposal = {
+          id: proposalId,
           upgradeId,
           proposerName: state.name,
           cost,
           yesCount: 0,
           noCount: 0,
+          firstVoteChoice: null,
+          firstVoteAt: null,
           voters: {},
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          active: true
         };
         return current;
       });
-      if (!result.committed) {
-        showBanner("Bloqueado", "Ya hay una votación activa.");
+      if (!tx.committed){
+        showBanner("Bloqueado", "Ya hay una propuesta activa.");
         return;
       }
-
-      await set(ref(state.db, "proposal"), {
+      await set(ref(state.db, "proposal/current"), {
+        id: proposalId,
         upgradeId,
         proposerName: state.name,
         cost,
         yesCount: 0,
         noCount: 0,
+        firstVoteChoice: null,
+        firstVoteAt: null,
         voters: {},
         createdAt: Date.now(),
         active: true
       });
-      playTone(880, 0.14, 0.04);
+      playTone(880, 0.12, 0.04);
+      showBanner("Propuesta", `${UPGRADE_DEFS[upgradeId].name} pasó a votación.`);
     }
 
     async function vote(choice){
-      if (!state.isReady || !state.db || !state.proposal) return;
-      await runTransaction(ref(state.db, "proposal"), (p) => {
+      if (!state.db || !state.isReady || !state.proposal) return;
+      await runTransaction(ref(state.db, "proposal/current"), (p) => {
         if (!p || !p.active) return p;
         if (!p.voters) p.voters = {};
         if (p.voters[state.uid]) return p;
         p.voters[state.uid] = choice;
+        if (!p.firstVoteChoice){
+          p.firstVoteChoice = choice;
+          p.firstVoteAt = Date.now();
+        }
         if (choice === "yes") p.yesCount = Number(p.yesCount || 0) + 1;
         else p.noCount = Number(p.noCount || 0) + 1;
         return p;
       });
     }
 
-    async function finalizeProposal(result){
-      if (!state.isReady || !state.db || !state.proposal) return;
-      const { upgradeId, cost } = state.proposal;
-      const stateRef = ref(state.db, "state");
-      const done = await runTransaction(stateRef, (current) => {
+    async function finalizeProposal(winner){
+      if (!state.db || !state.isReady || !state.proposal) return;
+      const p = state.proposal;
+      const cost = Number(p.cost || 0);
+      const upgradeId = p.upgradeId;
+      const tx = await runTransaction(ref(state.db, "state"), (current) => {
         if (!current || !current.activeProposalId) return current;
-        if (!current.pendingProposal || current.pendingProposal.upgradeId !== upgradeId) return current;
-        if (result === "yes") {
-          const curClicks = Number(current.globalClicks || 0);
-          if (curClicks < cost) return current;
-          current.globalClicks = curClicks - cost;
+        if (!current.proposal || current.proposal.upgradeId !== upgradeId) return current;
+        if (winner === "yes"){
+          if (Number(current.globalClicks || 0) < cost) return current;
+          current.globalClicks = Number(current.globalClicks || 0) - cost;
           current.upgrades = current.upgrades || {};
           current.upgrades[upgradeId] = Number(current.upgrades[upgradeId] || 0) + 1;
         }
         current.activeProposalId = null;
-        current.pendingProposal = null;
+        current.proposal = null;
         return current;
       });
-
-      if (!done.committed) return;
-
-      await remove(ref(state.db, "proposal"));
+      if (!tx.committed) return;
+      await remove(ref(state.db, "proposal/current"));
       state.proposal = null;
-      if (result === "yes") {
-        playTone(540, 0.18, 0.05);
-        showBanner("Aprobada", `${DEFAULT_UPGRADES[upgradeId].name} aplicada.`);
-      } else {
-        playTone(180, 0.18, 0.05);
+      renderProposal();
+      renderUpgradeList();
+      if (winner === "yes"){
+        playTone(540, 0.17, 0.05);
+        showBanner("Aprobada", `${UPGRADE_DEFS[upgradeId].name} aplicada.`);
+        createSpark(window.innerWidth / 2, window.innerHeight / 2, 18);
+      }else{
+        playTone(180, 0.17, 0.05);
         showBanner("Rechazada", "La propuesta no pasó.");
       }
-      renderProposal();
     }
 
-    function boot(){
+    function renderChart(){
+      const canvas = els.chart;
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const width = Math.floor(rect.width * dpr);
+      const height = Math.floor(rect.height * dpr);
+      if (canvas.width !== width || canvas.height !== height){
+        canvas.width = width;
+        canvas.height = height;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = rect.width;
+      const h = rect.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--panel2");
+      ctx.fillRect(0, 0, w, h);
+
+      const data = state.globalSecondSeries.slice(-60);
+      const values = data.length ? data.map((d) => Number(d.value || 0)) : [0];
+      const max = Math.max(1, ...values);
+      const leftPad = 20;
+      const rightPad = 16;
+      const topPad = 16;
+      const bottomPad = 38;
+      const innerW = Math.max(1, w - leftPad - rightPad);
+      const innerH = Math.max(1, h - topPad - bottomPad);
+      ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--line");
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i++){
+        const y = topPad + innerH * (i / 4);
+        ctx.moveTo(leftPad, y);
+        ctx.lineTo(w - rightPad, y);
+      }
+      ctx.stroke();
+
+      const points = [];
+      const step = values.length > 1 ? innerW / (values.length - 1) : 0;
+      const lineY = (value) => topPad + innerH - (value / max) * (innerH - 4);
+
+      ctx.beginPath();
+      values.forEach((value, i) => {
+        const sec = Number(data[i]?.sec || Math.floor(Date.now() / 1000) - (values.length - 1 - i));
+        const x = leftPad + i * step;
+        const y = lineY(value);
+        points.push({ x, y, value, sec, index: i });
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = "rgba(255,255,255,.92)";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      points.forEach((point, index) => {
+        ctx.beginPath();
+        const radius = state.chartHoverIndex === index ? 6 : 3.8;
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--muted");
+      const fontSize = Math.max(10, Math.min(12, Math.floor(w / 64)));
+      ctx.font = `${fontSize}px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const labelIndexes = new Set();
+      const labelStep = Math.max(1, Math.floor((points.length - 1) / 4));
+      for (let i = 0; i < points.length; i += labelStep) labelIndexes.add(i);
+      if (points.length > 0){
+        labelIndexes.add(0);
+        labelIndexes.add(points.length - 1);
+      }
+      points.forEach((point, i) => {
+        if (!labelIndexes.has(i)) return;
+        ctx.fillText(formatClockTimeFromSeconds(point.sec), point.x, h - bottomPad + 8);
+      });
+
+      state.chartPoints = points;
+      if (state.chartHoverIndex < 0 || state.chartHoverIndex >= points.length){
+        if (els.chartTooltip) els.chartTooltip.hidden = true;
+      }else{
+        const p = points[state.chartHoverIndex];
+        if (p) renderChartTooltip(p, p.x, p.y);
+      }
+    }
+
+    function updateChartHoverFromEvent(event){
+      if (!els.chart || !state.chartPoints || !state.chartPoints.length){
+        if (els.chartTooltip) els.chartTooltip.hidden = true;
+        state.chartHoverIndex = -1;
+        return;
+      }
+      const rect = els.chart.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      let bestIndex = -1;
+      let bestDist = Infinity;
+      state.chartPoints.forEach((point, index) => {
+        const dx = point.x - x;
+        const dy = point.y - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bestDist){
+          bestDist = dist;
+          bestIndex = index;
+        }
+      });
+      if (bestIndex >= 0 && bestDist <= 24){
+        state.chartHoverIndex = bestIndex;
+        renderChartTooltip(state.chartPoints[bestIndex], event.clientX, event.clientY);
+      }else{
+        state.chartHoverIndex = -1;
+        if (els.chartTooltip) els.chartTooltip.hidden = true;
+      }
+    }
+
+    function clearChartHover(){
+      state.chartHoverIndex = -1;
+      if (els.chartTooltip) els.chartTooltip.hidden = true;
+    }
+
+    function renderStats(){
+      const total = Number(state.sharedState.totalGenerated || 0);
+      const globalClicks = Number(state.sharedState.globalClicks || 0);
+      const peak = Number(state.sharedState.maxPerSecond || 0);
+      els.statTotalGenerated.textContent = formatNumber(total);
+      els.statGlobalClicks.textContent = formatNumber(globalClicks);
+      els.statPeakRate.textContent = `${formatNumber(peak)}/s`;
+      els.statPeakStamp.textContent = state.sharedState.maxPerSecondAt ? `Máximo alcanzado el ${timeStamp(state.sharedState.maxPerSecondAt)}` : "Aún sin registro";
+      els.statSessionClicks.textContent = formatNumber(state.globalSecondSeries.reduce((a, b) => a + Number(b.value || 0), 0));
+      els.statOnlineNow.textContent = String(state.onlineCount);
+      els.chartWindowLabel.textContent = `Últimos ${Math.min(60, state.globalSecondSeries.length)} segundos`;
+      renderChart();
+      renderLeaderboard();
+    }
+
+    function renderLeaderboard(){
+      const now = Date.now();
+      const rows = Object.values(state.contributors || {})
+        .filter((u) => Number(u.lastSeen || 0) && now - Number(u.lastSeen || 0) <= STAGE.USER_INACTIVE_MS)
+        .sort((a, b) => Number(b.totalClicks || 0) - Number(a.totalClicks || 0))
+        .slice(0, 10);
+
+      els.leaderList.innerHTML = rows.length ? rows.map((u, index) => `
+        <div class="leader-row">
+          <div class="leader-rank">${index + 1}</div>
+          <div class="leader-name">${escapeHtml(u.name || "Anon")}</div>
+          <div class="leader-meta">${formatNumber(u.totalClicks || 0)} clicks</div>
+        </div>
+      `).join("") : `<div class="leader-row"><div class="leader-rank">—</div><div class="leader-name">Sin datos recientes</div><div class="leader-meta">0 clicks</div></div>`;
+    }
+
+    function setView(view){
+      state.view = view;
+      if (view === "stats"){
+        els.mainView.classList.add("view-hidden");
+        els.statsView.classList.add("show");
+        els.mainView.style.display = "none";
+        els.statsView.style.display = "grid";
+        renderStats();
+      }else{
+        els.mainView.style.display = "grid";
+        els.statsView.style.display = "none";
+        els.mainView.classList.remove("view-hidden");
+      }
+    }
+
+    async function cleanupChatLimit(){
+      if (!state.db) return;
+      const snap = await get(ref(state.db, "chat/messages"));
+      const messages = snap.val() || {};
+      const list = Object.entries(messages).map(([key, val]) => ({ key, ...(val || {}) }))
+        .sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
+      if (list.length <= STAGE.CHAT_LIMIT) return;
+      const toRemove = list.slice(0, list.length - STAGE.CHAT_LIMIT);
+      const updates = {};
+      toRemove.forEach((m) => {
+        updates[`chat/messages/${m.key}`] = null;
+      });
+      await update(ref(state.db), updates);
+    }
+
+    async function sendChat(){
+      if (!state.db || !state.isReady || !state.name) return;
+      const text = sanitizeChat(els.chatInput.value);
+      if (!text) return;
+      els.chatInput.value = "";
+      const msg = {
+        name: state.name,
+        uid: state.uid,
+        text,
+        ts: Date.now()
+      };
+      const msgRef = push(ref(state.db, "chat/messages"));
+      await set(msgRef, msg);
+      await cleanupChatLimit();
+      playTone(660, 0.08, 0.03);
+    }
+
+    let dataReadyResolve;
+    const dataReadyPromise = new Promise(resolve => {
+      dataReadyResolve = resolve;
+    });
+
+    async function initFirebase(){
+      if (state.isReady || !state.name) return;
+      state.app = initializeApp(firebaseConfig);
+      state.db = getDatabase(state.app);
+      state.isReady = true;
+      els.connectionText.textContent = "Conectando…";
+
+      onValue(ref(state.db, ".info/connected"), async (snap) => {
+        if (snap.val() === true){
+          els.connectionText.textContent = "OK";
+          updateClickAvailability();
+          const myPresence = ref(state.db, `presence/${state.uid}`);
+          await set(myPresence, { name: state.name, online: true, at: Date.now() });
+          onDisconnect(myPresence).remove();
+          await update(ref(state.db, `users/${state.uid}`), {
+            name: state.name,
+            lastSeen: Date.now(),
+            cpsCurrent: 0,
+            uid: state.uid,
+            totalClicks: 0,
+            online: true
+          });
+        }else{
+          els.connectionText.textContent = "Sin conexión";
+        }
+      });
+
+      onValue(ref(state.db, "presence"), async (snap) => {
+        const prev = state.onlineCount;
+        state.presence = snap.val() || {};
+        state.onlineCount = countOnlinePresence();
+        els.onlineCount.textContent = String(state.onlineCount);
+        els.onlineTop.textContent = String(state.onlineCount);
+        if (els.statOnlineNow) els.statOnlineNow.textContent = String(state.onlineCount);
+        renderOnlinePanels();
+        renderUpgradeList();
+        updateClickAvailability();
+
+        if (prev === 0 && state.onlineCount > 0){
+          const offlineGain = await catchUpOfflineClicks();
+          if (offlineGain > 0){
+            showOfflineToast(`La sala estuvo vacía y las mejoras han generado ${formatNumber(offlineGain)} clicks offline.`);
+          }
+        }
+        if (prev > 0 && state.onlineCount === 0){
+          await markEmptyNow();
+        }
+        state.lastOnlineCount = state.onlineCount;
+      });
+
+      let stateLoaded = false;
+      onValue(ref(state.db, "state"), (snap) => {
+        const v = snap.val() || {};
+        state.sharedState.globalClicks = Number(v.globalClicks || 0);
+        state.sharedState.totalGenerated = Number(v.totalGenerated || v.globalClicks || 0);
+        state.sharedState.upgrades = v.upgrades || {};
+        state.sharedState.lastAppliedSecond = Number(v.lastAppliedSecond || 0);
+        state.sharedState.lastOfflineCatchupSecond = Number(v.lastOfflineCatchupSecond || 0);
+        state.sharedState.lastEmptyAt = Number(v.lastEmptyAt || 0) || null;
+        state.sharedState.activeProposalId = v.activeProposalId || null;
+        state.sharedState.maxPerSecond = Number(v.maxPerSecond || 0);
+        state.sharedState.maxPerSecondAt = Number(v.maxPerSecondAt || 0);
+        if (state.onlineCount > 0 && state.sharedState.lastAppliedSecond){
+          catchUpOfflineClicks().catch(() => {});
+        }
+        updateCounter(els.counter, state.counterDigits, state.sharedState.globalClicks);
+        updateCounter(els.globalRateBig, state.rateCounterDigits, state.lastRenderedGlobalRate || 0);
+        if (els.statGlobalClicks) els.statGlobalClicks.textContent = formatNumber(state.sharedState.globalClicks);
+        if (els.statTotalGenerated) els.statTotalGenerated.textContent = formatNumber(state.sharedState.totalGenerated);
+        renderUpgradeList();
+        renderStats();
+        // Resolver el Promise la primera vez que se cargan los datos
+        if (!stateLoaded){
+          stateLoaded = true;
+          dataReadyResolve();
+        }
+      });
+
+      onValue(ref(state.db, "proposal/current"), (snap) => {
+        state.proposal = snap.val();
+        renderProposal();
+      });
+
+      onValue(ref(state.db, "users"), (snap) => {
+        state.users = snap.val() || {};
+        renderOnlinePanels();
+      });
+
+      onValue(ref(state.db, "contributors"), (snap) => {
+        state.contributors = snap.val() || {};
+        renderLeaderboard();
+      });
+
+      onValue(ref(state.db, "chat/messages"), (snap) => {
+        const obj = snap.val() || {};
+        const messages = Object.entries(obj).map(([key, val]) => ({ key, ...(val || {}) }))
+          .sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0))
+          .slice(-STAGE.CHAT_LIMIT);
+        renderChat(messages);
+      });
+
+      const stateRef = ref(state.db, "state");
+      const current = await get(stateRef);
+      if (!current.exists()){
+        await set(stateRef, {
+          globalClicks: 0,
+          totalGenerated: 0,
+          upgrades: {
+            clickPower: 0,
+            passiveRate: 0,
+            offlineBank: 0,
+            groupPulse: 0,
+            sparkChain: 0,
+            critHand: 0,
+            autoTapper: 0,
+            tempoBoost: 0,
+            streakEngine: 0,
+            beaconWave: 0,
+            voteSeed: 0,
+            cosmicBoost: 0,
+            timeWeaver: 0,
+            offlineReservoir: 0,
+            mirrorPulse: 0,
+            burstLens: 0,
+            chronoLatch: 0
+          },
+          lastAppliedSecond: 0,
+          lastOfflineCatchupSecond: 0,
+          lastTickSecond: 0,
+          lastEmptyAt: null,
+          activeProposalId: null,
+          maxPerSecond: 0,
+          maxPerSecondAt: 0
+        });
+      }
+    }
+
+    async function attemptResumeOfflineToast(){
+      const lastExit = Number(localStorage.getItem(LS_LAST_EXIT) || 0);
+      if (!lastExit || !state.isReady) return;
+      const elapsed = Date.now() - lastExit;
+      if (elapsed < 2000) return;
+      const offlineGain = Math.max(0, Math.floor((elapsed / 1000) * Math.max(0, calcEffects().offline + calcEffects().passive * 0.25)));
+      showOfflineToast(`Has estado fuera ${Math.floor(elapsed / 1000)}s y tus mejoras habrían generado unos ${formatNumber(offlineGain)} clicks offline.`);
+    }
+
+    async function boot(){
       applyTheme(state.theme);
-      if (state.blockedUntil > Date.now()) {
+      buildCounter(els.counter, state.counterDigits, "0");
+      buildCounter(els.globalRateBig, state.rateCounterDigits, "0");
+      updateSidebarNumbers();
+      renderUpgradeList();
+      renderChart();
+
+      if (state.blockedUntil && state.blockedUntil !== Infinity && state.blockedUntil > Date.now()){
         els.clickButton.disabled = true;
         const remain = Math.ceil((state.blockedUntil - Date.now()) / 1000);
         showBanner("Bloqueado", `Espera ${remain}s.`);
         setTimeout(() => {
-          if (Date.now() >= state.blockedUntil) {
+          if (Date.now() >= state.blockedUntil){
             state.blockedUntil = 0;
             localStorage.removeItem(LS_BLOCKED_UNTIL);
             els.clickButton.disabled = false;
           }
         }, Math.max(0, state.blockedUntil - Date.now()));
       }
+      if (state.blockedUntil === Infinity){
+        els.clickButton.disabled = true;
+        showBanner("Anticheat", "Baneo permanente activo.");
+      }
+      updateClickAvailability();
 
-      if (state.name) {
+      if (state.name){
         els.userNameText.textContent = state.name;
         els.usernameInput.value = state.name;
         els.authModal.classList.remove("show");
         els.app.style.display = "grid";
-        initFirebase();
-      } else {
+        await initFirebase();
+        setTimeout(attemptResumeOfflineToast, 1200);
+      }else{
         els.authModal.classList.add("show");
       }
 
-      buildCounter("0");
-      computeEffects();
-      setInterval(catchUpPassive, 1000);
-      setInterval(flushPendingClicks, 1000);
-      setInterval(() => {
-        if (state.db && state.isReady) {
-          renderProposal();
-        }
+      setView("main");
+
+      state.tickTimer = setInterval(async () => {
+        try{
+          if (state.db && state.isReady){
+            await settleGlobalTick();
+            renderProposal();
+            renderStats();
+            computeLocalCps();
+          }
+        }catch(_e){}
       }, 1000);
+
+      state.refreshTimer = setInterval(async () => {
+        try{
+          if (state.db && state.isReady){
+            await heartbeatUser();
+            renderOnlinePanels();
+            renderUpgradeList();
+            renderStats();
+            updateClickAvailability();
+          }
+        }catch(_e){}
+      }, 1000);
+
+      setInterval(renderChart, 1000);
+      window.addEventListener("resize", renderChart);
+      if (els.chart){
+        els.chart.addEventListener("mousemove", updateChartHoverFromEvent);
+        els.chart.addEventListener("mouseleave", clearChartHover);
+        els.chart.addEventListener("touchstart", (e) => {
+          const touch = e.touches && e.touches[0];
+          if (!touch) return;
+          updateChartHoverFromEvent(touch);
+        }, { passive: true });
+        els.chart.addEventListener("touchmove", (e) => {
+          const touch = e.touches && e.touches[0];
+          if (!touch) return;
+          updateChartHoverFromEvent(touch);
+        }, { passive: true });
+        els.chart.addEventListener("touchend", clearChartHover, { passive: true });
+      }
     }
 
-    els.joinBtn.addEventListener("click", async () => {
+    async function handleJoin(){
       const name = sanitizeName(els.usernameInput.value);
       if (!name) return;
       state.name = name;
@@ -1180,20 +2768,53 @@
       els.authModal.classList.remove("show");
       els.app.style.display = "grid";
       await initFirebase();
+      // Esperar a que los datos (upgrades) se carguen antes de aplicar offline
+      await dataReadyPromise;
+      await catchUpOfflineClicks().catch(() => {});
       showBanner("Listo", `Entras como ${name}.`);
-    });
+      setTimeout(attemptResumeOfflineToast, 1000);
+    }
 
+    function endSession(){
+      localStorage.setItem(LS_LAST_EXIT, String(Date.now()));
+      if (state.db && state.name){
+        update(ref(state.db, `users/${state.uid}`), {
+          name: state.name,
+          lastSeen: Date.now(),
+          cpsCurrent: state.localCps,
+          uid: state.uid,
+          online: false
+        }).catch(() => {});
+      }
+    }
+
+    function handleGlobalKeydown(e){
+      if (e.repeat) return;
+      if (isTypingTarget(e.target)) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === "BUTTON" || active.closest("button"))) return;
+      if (e.key === " " || e.key === "Spacebar" || e.code === "Space" || e.key === "Enter"){
+        e.preventDefault();
+        queueClick("keyboard");
+      }
+    }
+
+    els.joinBtn.addEventListener("click", handleJoin);
     els.usernameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") els.joinBtn.click();
+      if (e.key === "Enter") handleJoin();
     });
 
-    els.clickButton.addEventListener("click", queueClick);
+    els.clickButton.addEventListener("click", () => queueClick("button"));
 
     els.openUpgrades.addEventListener("click", () => {
       const open = els.upgradesPanel.style.display !== "none";
       els.upgradesPanel.style.display = open ? "none" : "block";
-      els.openUpgrades.textContent = open ? "Mejoras" : "Ocultar";
+      els.openUpgrades.textContent = open ? "Mejoras" : "Ocultar mejoras";
+      if (!open) renderUpgradeList();
     });
+
+    els.openStats.addEventListener("click", () => setView("stats"));
+    els.closeStats.addEventListener("click", () => setView("main"));
 
     els.sidebarToggle.addEventListener("click", () => {
       els.sidebar.classList.toggle("collapsed");
@@ -1205,20 +2826,39 @@
 
     els.voteYesBtn.addEventListener("click", () => {
       vote("yes");
-      playTone(780, 0.1, 0.03);
+      playTone(780, 0.08, 0.03);
     });
     els.voteNoBtn.addEventListener("click", () => {
       vote("no");
-      playTone(220, 0.1, 0.03);
+      playTone(220, 0.08, 0.03);
     });
     els.dismissProposal.addEventListener("click", () => {
       els.proposal.classList.remove("show");
     });
 
-    window.addEventListener("beforeunload", () => {
-      if (state.db && state.pendingClicks > 0) {
-        try { flushPendingClicks(); } catch (e) {}
+    els.chatSend.addEventListener("click", sendChat);
+    els.chatToggle.addEventListener("click", () => {
+      if (!els.chatPanel) return;
+      els.chatPanel.classList.toggle("show");
+      els.chatPanel.setAttribute("aria-hidden", els.chatPanel.classList.contains("show") ? "false" : "true");
+    });
+    els.chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        e.preventDefault();
+        sendChat();
       }
+    });
+
+    document.addEventListener("keydown", handleGlobalKeydown, { passive: false });
+
+    window.addEventListener("beforeunload", () => {
+      endSession();
+      if (state.db && state.pendingClicks > 0){
+        try{ /* best effort */ }catch(_e){}
+      }
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") endSession();
     });
 
     boot();
