@@ -946,10 +946,11 @@
       font-size:1rem;
     }
     .update-overlay-actions{
-      display:flex;
-      justify-content:center;
+      display:grid;
       gap:10px;
-      flex-wrap:wrap;
+      justify-items:stretch;
+      width:min(320px, 100%);
+      margin:0 auto;
     }
     .update-overlay-btn{
       border:1px solid var(--line);
@@ -961,6 +962,11 @@
       text-decoration:none;
       cursor:pointer;
       transition:transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease;
+      width:100%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
     }
     .update-overlay-btn:hover{transform:translateY(-1px)}
     .update-overlay-btn.primary{
@@ -969,6 +975,68 @@
       box-shadow:0 12px 24px rgba(0,0,0,.18);
     }
     body[data-theme="light"] .update-overlay-btn.primary{color:#fff;background:linear-gradient(180deg, #2a2a2a, #111)}
+    .follow-version strong{font-variant-numeric:tabular-nums}
+
+
+    .update-warning{
+      position:fixed;
+      inset:0;
+      z-index:210;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background:rgba(0,0,0,.86);
+      backdrop-filter:blur(10px);
+    }
+    .update-warning[hidden]{display:none}
+    .update-warning-card{
+      width:min(560px,100%);
+      border-radius:28px;
+      border:1px solid var(--line);
+      background:var(--bg);
+      box-shadow:var(--shadow);
+      padding:26px 22px;
+      text-align:center;
+    }
+    .update-warning-title{
+      margin:0 0 10px;
+      font-size:clamp(1.45rem, 3.6vw, 2.05rem);
+    }
+    .update-warning-desc{
+      margin:0 0 18px;
+      color:var(--muted);
+      line-height:1.55;
+      font-size:1rem;
+    }
+    .update-warning-actions{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .update-warning-btn{
+      border:1px solid var(--line);
+      background:var(--panel2);
+      color:var(--text);
+      border-radius:16px;
+      padding:13px 16px;
+      font-weight:900;
+      cursor:pointer;
+      transition:transform var(--ui-speed) ease, background var(--ui-speed) ease, color var(--ui-speed) ease, border-color var(--ui-speed) ease, opacity var(--ui-speed) ease;
+    }
+    .update-warning-btn:hover{transform:translateY(-1px)}
+    .update-warning-btn.primary{
+      color:#111;
+      background:linear-gradient(180deg, #fff, #d9d9d9);
+      box-shadow:0 12px 24px rgba(0,0,0,.18);
+    }
+    body[data-theme="light"] .update-warning-btn.primary{color:#fff;background:linear-gradient(180deg, #2a2a2a, #111)}
+    .update-warning-btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+    }
 
     .startup-fallback{
       position:fixed;
@@ -1093,11 +1161,23 @@
 
   <div id="updateOverlay" class="update-overlay" hidden aria-modal="true" role="dialog" aria-labelledby="updateOverlayTitle">
     <div class="update-overlay-card">
-      <div class="update-overlay-badge">Actualización disponible</div>
+      <div class="update-overlay-badge">VERSIÓN ANTIGUA</div>
       <h2 id="updateOverlayTitle">Actualización disponible</h2>
       <p id="updateOverlayText">Hay una versión más reciente de Colaboraclicker.</p>
       <div class="update-overlay-actions">
         <a id="updateDownloadBtn" class="update-overlay-btn primary" href="https://raw.githubusercontent.com/NoobieGD/Colaboraclicker/main/index.html" download="index.html" target="_blank" rel="noopener">Descargar HTML</a>
+        <button id="updateContinueBtn" class="update-overlay-btn follow-version" type="button">Seguir con <span id="installedVersionText">1.2.2</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="updateWarningOverlay" class="update-warning" hidden aria-modal="true" role="dialog" aria-labelledby="updateWarningTitle">
+    <div class="update-warning-card">
+      <h2 id="updateWarningTitle" class="update-warning-title">¿Estás seguro que quieres seguir con una versión antigua?</h2>
+      <p id="updateWarningText" class="update-warning-desc">Seguir con esta versión puede romper la página localmente, dejar clicks fuera de orden, hacer que algunas mejoras no se apliquen y provocar comportamientos raros en el guardado o la sincronización.</p>
+      <div class="update-warning-actions">
+        <button id="updateWarningYesBtn" class="update-warning-btn primary" type="button" disabled>Sí (5)</button>
+        <button id="updateWarningNoBtn" class="update-warning-btn" type="button">No</button>
       </div>
     </div>
   </div>
@@ -1109,7 +1189,7 @@
         <div class="logo">C</div>
         <div>
           <h1>Colaboraclicker</h1>
-          <p>Clicks compartidos · v1.2.1</p>
+          <p>Clicks compartidos · v1.2.2</p>
         </div>
       </div>
 
@@ -1333,7 +1413,7 @@
       appId: "1:597310300521:web:ea4f0abb2c18535f0f9df8"
     };
 
-    const APP_VERSION = "1.2.1";
+    const APP_VERSION = "1.2.2";
     const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/NoobieGD/Colaboraclicker/main/index.html";
     const REMOTE_DOWNLOAD_URL = "https://raw.githubusercontent.com/NoobieGD/Colaboraclicker/main/index.html";
 
@@ -1364,18 +1444,18 @@
       offlineBank: {
         icon: "🏦",
         name: "Banco fantasma",
-        desc: "Sigue generando cuando la sala esté vacía.",
+        desc: "Sigue generando cuando la sala esté vacía, más rápido que antes.",
         baseCost: 63750,
         growth: 2.00,
-        effect: "+0.20 clicks/seg por nivel"
+        effect: "1 click cada 15s por nivel"
       },
       groupPulse: {
         icon: "🌐",
         name: "Pulso coral",
-        desc: "Más usuarios online = más clicks.",
+        desc: "Impulso global estable para la generación pasiva.",
         baseCost: 93750,
         growth: 2.05,
-        effect: "+0.05 clicks/seg por online"
+        effect: "+0.05 clicks/seg global"
       },
       sparkChain: {
         icon: "⚡",
@@ -1420,10 +1500,10 @@
       beaconWave: {
         icon: "🛰️",
         name: "Onda faro",
-        desc: "Aporta un extra por usuario online.",
+        desc: "Aporta un extra global estable.",
         baseCost: 102500,
         growth: 2.00,
-        effect: "+0.03 clicks/seg por online"
+        effect: "+0.03 clicks/seg global"
       },
       voteSeed: {
         icon: "🗳️",
@@ -1452,10 +1532,10 @@
       offlineReservoir: {
         icon: "🌙",
         name: "Reservorio nocturno",
-        desc: "Refuerza lo que ocurre cuando nadie está conectado.",
+        desc: "Potencia la generación cuando la sala queda vacía.",
         baseCost: 152500,
         growth: 1.96,
-        effect: "+0.40 clicks/seg offline por nivel"
+        effect: "1 click cada 8s por nivel"
       },
       mirrorPulse: {
         icon: "🪞",
@@ -1463,7 +1543,7 @@
         desc: "Refleja el valor de la sala en forma de más generación compartida.",
         baseCost: 178750,
         growth: 2.02,
-        effect: "+0.04 clicks/seg por online"
+        effect: "+0.04 clicks/seg global"
       },
       burstLens: {
         icon: "🔎",
@@ -1492,7 +1572,7 @@
     };
 
     const MIN_ONLINE_FOR_PROPOSAL = 3;
-    const ONLINE_TIMEOUT_MS = 45000;
+    const ONLINE_TIMEOUT_MS = 6000;
 
     const els = {
       app: document.getElementById("app"),
@@ -1551,6 +1631,10 @@
       updateOverlay: document.getElementById("updateOverlay"),
       updateOverlayText: document.getElementById("updateOverlayText"),
       updateDownloadBtn: document.getElementById("updateDownloadBtn"),
+      updateContinueBtn: document.getElementById("updateContinueBtn"),
+      updateWarningOverlay: document.getElementById("updateWarningOverlay"),
+      updateWarningYesBtn: document.getElementById("updateWarningYesBtn"),
+      updateWarningNoBtn: document.getElementById("updateWarningNoBtn"),
       themeToggle: document.getElementById("themeToggle"),
       onlinePanel: document.getElementById("onlinePanel"),
       topOnlinePanel: document.getElementById("topOnlinePanel"),
@@ -1583,6 +1667,7 @@
         upgrades: {},
         lastAppliedSecond: 0,
         lastOfflineCatchupSecond: 0,
+        lastOfflineCatchupAt: 0,
         lastEmptyAt: null,
         activeProposalId: null,
         maxPerSecond: 0,
@@ -1621,7 +1706,10 @@
       chartHoverIndex: -1,
       offlineCatchupBusy: false,
       updateChecked: false,
-      updateAvailable: false
+      updateAvailable: false,
+      updateOverride: sessionStorage.getItem("colaboraclicker_allow_old_version") === "1",
+      updateWarningTimer: null,
+      updateWarningCountdown: 5
     };
 
     function applyTheme(theme){
@@ -1657,6 +1745,9 @@
     }
 
     function showOfflineToast(text){
+      const now = Date.now();
+      if (state.pendingOfflineToast && now - Number(state.pendingOfflineToast || 0) < 8000) return;
+      state.pendingOfflineToast = now;
       els.offlineToast.innerHTML = `<strong>Progreso offline</strong><p>${text}</p>`;
       els.offlineToast.classList.add("show");
       clearTimeout(state.offlineToastTimer);
@@ -1669,9 +1760,75 @@
       if (el) el.remove();
     }
 
+    function syncInstalledVersionLabel(){
+      const versionText = document.getElementById("installedVersionText");
+      if (versionText) versionText.textContent = APP_VERSION;
+      if (els.updateContinueBtn){
+        els.updateContinueBtn.setAttribute("aria-label", `Seguir con la versión instalada ${APP_VERSION}`);
+      }
+      if (els.updateWarningTitle){
+        els.updateWarningTitle.textContent = "¿Estás seguro que quieres seguir con una versión antigua?";
+      }
+    }
+
+
+    function hideUpdateOverlay(){
+      if (els.updateOverlay){
+        els.updateOverlay.hidden = true;
+      }
+    }
+
+    function hideUpdateWarning(){
+      if (els.updateWarningOverlay){
+        els.updateWarningOverlay.hidden = true;
+      }
+      clearInterval(state.updateWarningTimer);
+      state.updateWarningTimer = null;
+      state.updateWarningCountdown = 5;
+      if (els.updateWarningYesBtn){
+        els.updateWarningYesBtn.disabled = true;
+        els.updateWarningYesBtn.textContent = "Sí (5)";
+      }
+    }
+
+    function openUpdateWarning(){
+      hideUpdateOverlay();
+      if (els.updateWarningOverlay){
+        els.updateWarningOverlay.hidden = false;
+      }
+      clearInterval(state.updateWarningTimer);
+      state.updateWarningCountdown = 5;
+      if (els.updateWarningYesBtn){
+        els.updateWarningYesBtn.disabled = true;
+        els.updateWarningYesBtn.textContent = "Sí (5)";
+      }
+      state.updateWarningTimer = setInterval(() => {
+        state.updateWarningCountdown -= 1;
+        if (els.updateWarningYesBtn){
+          if (state.updateWarningCountdown > 0){
+            els.updateWarningYesBtn.textContent = `Sí (${state.updateWarningCountdown})`;
+          }else{
+            els.updateWarningYesBtn.textContent = "Sí";
+            els.updateWarningYesBtn.disabled = false;
+            clearInterval(state.updateWarningTimer);
+            state.updateWarningTimer = null;
+          }
+        }
+      }, 1000);
+    }
+
+    function continueWithOldVersion(){
+      state.updateOverride = true;
+      sessionStorage.setItem("colaboraclicker_allow_old_version", "1");
+      hideUpdateWarning();
+      hideUpdateOverlay();
+      showBanner("Versión antigua activada", "Puedes seguir, pero algunas funciones podrían comportarse de forma inestable.");
+    }
 
     function showUpdateOverlay(remoteVersion){
+      if (state.updateOverride) return;
       state.updateAvailable = true;
+      syncInstalledVersionLabel();
       if (els.updateOverlayText){
         els.updateOverlayText.textContent = remoteVersion
           ? `Tienes la versión ${APP_VERSION} instalada y la última publicada detectada es ${remoteVersion}.`
@@ -1686,7 +1843,7 @@
     }
 
     async function checkForRemoteUpdate(){
-      if (state.updateChecked) return;
+      if (state.updateChecked || state.updateOverride) return;
       state.updateChecked = true;
       try{
         const res = await fetch(REMOTE_VERSION_URL, { cache: "no-store" });
@@ -1817,6 +1974,11 @@ function updateClickAvailability(){
       return Number(upgrades?.[id] || 0);
     }
 
+    function getOfflinePerSecond(upgrades = state.sharedState.upgrades || {}){
+      const get = (id) => getUpgradeLevel(upgrades, id);
+      return (get("offlineBank") * (1 / 15)) + (get("offlineReservoir") * (1 / 8));
+    }
+
     function calcEffects(){
       const up = state.sharedState.upgrades || {};
       const get = (id) => getUpgradeLevel(up, id);
@@ -1826,8 +1988,7 @@ function updateClickAvailability(){
         + get("cosmicBoost") * 0.12
         + get("timeWeaver") * 0.10
         + get("burstLens") * 0.02;
-      const offline = get("offlineBank") * 0.20
-        + get("offlineReservoir") * 0.40;
+      const offline = getOfflinePerSecond(up);
       const group = get("groupPulse") * 0.05
         + get("beaconWave") * 0.03
         + get("mirrorPulse") * 0.04;
@@ -1941,7 +2102,7 @@ function updateClickAvailability(){
 
     function updateSidebarNumbers(){
   const fx = calcEffects();
-  const improvementRate = Math.max(0, (fx.passive + fx.offline + fx.group * Math.max(0, state.onlineCount) + fx.autoTap + fx.streak + (fx.outputBoost - 1)));
+  const improvementRate = Math.max(0, (fx.passive + fx.offline + fx.group + fx.autoTap + fx.streak + (fx.outputBoost - 1)));
   state.localCps = Math.max(0, Math.round((state.localClickTimes.length + improvementRate) * 10) / 10);
   if (els.localCpsText) els.localCpsText.textContent = formatNumber(state.localCps);
 }
@@ -1991,9 +2152,9 @@ function updateClickAvailability(){
     function isOnlineRecord(uid){
       const p = state.presence?.[uid];
       const u = state.users?.[uid];
-      const ts = getLatestActivityTs(p, u);
       if (p && p.online === false) return false;
-      if (u && u.online === false && ts && Date.now() - ts > ONLINE_TIMEOUT_MS) return false;
+      if (u && u.online === false) return false;
+      const ts = getLatestActivityTs(p, u);
       if (ts) return (Date.now() - ts) <= ONLINE_TIMEOUT_MS;
       return !!(p || u);
     }
@@ -2024,6 +2185,10 @@ function updateClickAvailability(){
 
     function getOnlineCountLive(){
       return getMergedOnlineUsers().length;
+    }
+
+    function getPresenceOnlineCount(){
+      return Object.values(state.presence || {}).filter(isPresenceActive).length;
     }
 
     function renderOnlinePanels(){
@@ -2091,7 +2256,7 @@ function updateClickAvailability(){
     }
 
     function renderChat(messages){
-      const list = Array.isArray(messages) ? messages : [];
+      const list = Array.isArray(messages) ? [...messages].reverse() : [];
       els.chatList.innerHTML = list.length ? list.map((m) => `
         <div class="chat-row">
           <div class="chat-topline">
@@ -2101,7 +2266,7 @@ function updateClickAvailability(){
           <div class="chat-text">${escapeHtml(m.text || "")}</div>
         </div>
       `).join("") : `<div class="chat-row"><div class="chat-text" style="color:var(--muted)">Aún no hay mensajes.</div></div>`;
-      els.chatList.scrollTop = els.chatList.scrollHeight;
+      els.chatList.scrollTop = 0;
     }
 
     function renderProposal(){
@@ -2353,8 +2518,7 @@ function updateClickAvailability(){
       const pendingSnap = await get(ref(state.db, "pendingClicks"));
       const pending = Number(pendingSnap.val() || 0);
       const fx = calcEffects();
-      const onlineCount = Math.max(0, state.onlineCount);
-      const passiveExact = Math.max(0, fx.passive + fx.offline + fx.group * onlineCount + fx.autoTap + fx.streak + fx.outputBoost * 0.2);
+      const passiveExact = Math.max(0, fx.passive + fx.offline + fx.group + fx.autoTap + fx.streak + fx.outputBoost * 0.2);
       state.passiveCarry = Math.max(0, Number(state.passiveCarry || 0) + passiveExact);
       const passiveGain = Math.floor(state.passiveCarry);
       state.passiveCarry -= passiveGain;
@@ -2384,57 +2548,49 @@ function updateClickAvailability(){
       if (!state.db || !state.isReady || state.offlineCatchupBusy) return 0;
       state.offlineCatchupBusy = true;
       try{
-        const nowSec = Math.floor(Date.now() / 1000);
-        const startSecond = Math.max(
-          Number(state.sharedState.lastAppliedSecond || 0),
-          Number(state.sharedState.lastOfflineCatchupSecond || 0)
-        );
-        const elapsedSeconds = Math.max(0, Math.min(nowSec - startSecond, 6 * 60 * 60));
-        if (elapsedSeconds <= 0) return 0;
+        const now = Date.now();
+        const nowSec = Math.floor(now / 1000);
+        let appliedGain = 0;
+        const tx = await runTransaction(ref(state.db, "state"), (current) => {
+          if (!current) return current;
+          const emptyAt = Number(current.lastEmptyAt || 0);
+          const lastCatchupAt = Number(current.lastOfflineCatchupAt || current.lastOfflineCatchupSecond || 0);
+          const fallbackEmptyAt = Number(localStorage.getItem(LS_LAST_EXIT) || 0);
+          const startAt = Math.max(emptyAt, lastCatchupAt, fallbackEmptyAt);
+          if (!startAt) return current;
 
-        const fx = calcEffects();
-        const offlinePerSecond = Math.max(0, (fx.offline + fx.passive * 0.25) * 0.08);
-        const offlineGain = Math.floor(elapsedSeconds * offlinePerSecond);
-        if (offlineGain <= 0){
-          const tx = await runTransaction(ref(state.db, "state"), (cur) => {
-            if (!cur) return cur;
-            const currentLastOffline = Number(cur.lastOfflineCatchupSecond || 0);
-            cur.lastOfflineCatchupSecond = Math.max(currentLastOffline, nowSec);
-            return cur;
-          });
-          if (tx.committed) state.sharedState.lastOfflineCatchupSecond = nowSec;
-          return 0;
-        }
+          const elapsedSeconds = Math.max(0, Math.min(Math.floor((now - startAt) / 1000), 6 * 60 * 60));
+          if (elapsedSeconds <= 0) return current;
 
-        const tx = await runTransaction(ref(state.db, "state"), (cur) => {
-          if (!cur) return cur;
-          const currentLastApplied = Number(cur.lastAppliedSecond || 0);
-          const currentLastOffline = Number(cur.lastOfflineCatchupSecond || 0);
-          const appliedStart = Math.max(currentLastApplied, currentLastOffline);
-          if (appliedStart >= nowSec) return cur;
-          const currentElapsed = Math.max(0, Math.min(nowSec - appliedStart, 6 * 60 * 60));
-          const currentGain = Math.floor(currentElapsed * offlinePerSecond);
-          if (currentGain <= 0){
-            cur.lastOfflineCatchupSecond = Math.max(currentLastOffline, nowSec);
-            return cur;
-          }
-          cur.globalClicks = Number(cur.globalClicks || 0) + currentGain;
-          cur.totalGenerated = Number(cur.totalGenerated || 0) + currentGain;
-          cur.lastOfflineCatchupSecond = nowSec;
-          return cur;
+          const offlinePerSecond = getOfflinePerSecond(current.upgrades || {});
+          const gain = Math.floor(elapsedSeconds * offlinePerSecond);
+          if (gain <= 0) return current;
+
+          current.globalClicks = Number(current.globalClicks || 0) + gain;
+          current.totalGenerated = Number(current.totalGenerated || 0) + gain;
+          current.lastOfflineCatchupAt = now;
+          current.lastOfflineCatchupSecond = nowSec;
+          current.lastAppliedSecond = Math.max(Number(current.lastAppliedSecond || 0), nowSec);
+          appliedGain = gain;
+          return current;
         });
-        if (!tx.committed) return 0;
 
+        if (!tx.committed || appliedGain <= 0) return 0;
+
+        state.sharedState.lastOfflineCatchupAt = now;
         state.sharedState.lastOfflineCatchupSecond = nowSec;
-        state.sharedState.globalClicks = Number(state.sharedState.globalClicks || 0) + offlineGain;
-        state.sharedState.totalGenerated = Number(state.sharedState.totalGenerated || 0) + offlineGain;
+        state.sharedState.lastAppliedSecond = Math.max(Number(state.sharedState.lastAppliedSecond || 0), nowSec);
+        state.sharedState.globalClicks = Number(state.sharedState.globalClicks || 0) + appliedGain;
+        state.sharedState.totalGenerated = Number(state.sharedState.totalGenerated || 0) + appliedGain;
         updateCounter(els.counter, state.counterDigits, state.sharedState.globalClicks);
-        if (state.name){
-          await incrementUserStats(offlineGain);
+        syncInstalledVersionLabel();
+      if (state.name){
+          await incrementUserStats(appliedGain);
         }
         playOfflineSound();
         renderStats();
-        return offlineGain;
+        renderUpgradeList();
+        return appliedGain;
       }finally{
         state.offlineCatchupBusy = false;
       }
@@ -2778,9 +2934,11 @@ function updateClickAvailability(){
           updateClickAvailability();
           const now = Date.now();
           const myPresence = ref(state.db, `presence/${state.uid}`);
+          const myUser = ref(state.db, `users/${state.uid}`);
           await set(myPresence, { name: state.name, online: true, at: now, lastSeen: now });
           onDisconnect(myPresence).remove();
-          await update(ref(state.db, `users/${state.uid}`), {
+          onDisconnect(myUser).update({ online: false });
+          await update(myUser, {
             name: state.name,
             lastSeen: now,
             heartbeatAt: now,
@@ -2797,7 +2955,7 @@ function updateClickAvailability(){
       onValue(ref(state.db, "presence"), async (snap) => {
         const prev = state.onlineCount;
         state.presence = snap.val() || {};
-        state.onlineCount = getOnlineCountLive();
+        state.onlineCount = getPresenceOnlineCount();
         els.onlineCount.textContent = String(state.onlineCount);
         els.onlineTop.textContent = String(state.onlineCount);
         if (els.statOnlineNow) els.statOnlineNow.textContent = String(state.onlineCount);
@@ -2825,11 +2983,12 @@ function updateClickAvailability(){
         state.sharedState.upgrades = v.upgrades || {};
         state.sharedState.lastAppliedSecond = Number(v.lastAppliedSecond || 0);
         state.sharedState.lastOfflineCatchupSecond = Number(v.lastOfflineCatchupSecond || 0);
+        state.sharedState.lastOfflineCatchupAt = Number(v.lastOfflineCatchupAt || 0);
         state.sharedState.lastEmptyAt = Number(v.lastEmptyAt || 0) || null;
         state.sharedState.activeProposalId = v.activeProposalId || null;
         state.sharedState.maxPerSecond = Number(v.maxPerSecond || 0);
         state.sharedState.maxPerSecondAt = Number(v.maxPerSecondAt || 0);
-        if (state.onlineCount > 0 && state.sharedState.lastAppliedSecond){
+        if (state.onlineCount > 0){
           catchUpOfflineClicks().catch(() => {});
         }
         updateCounter(els.counter, state.counterDigits, state.sharedState.globalClicks);
@@ -2852,11 +3011,8 @@ function updateClickAvailability(){
 
       onValue(ref(state.db, "users"), (snap) => {
         state.users = snap.val() || {};
-        state.onlineCount = getOnlineCountLive();
-        els.onlineCount.textContent = String(state.onlineCount);
-        els.onlineTop.textContent = String(state.onlineCount);
-        if (els.statOnlineNow) els.statOnlineNow.textContent = String(state.onlineCount);
         renderOnlinePanels();
+        if (els.statOnlineNow) els.statOnlineNow.textContent = String(getPresenceOnlineCount());
       });
 
       onValue(ref(state.db, "contributors"), (snap) => {
@@ -2899,6 +3055,7 @@ function updateClickAvailability(){
           },
           lastAppliedSecond: 0,
           lastOfflineCatchupSecond: 0,
+          lastOfflineCatchupAt: 0,
           lastTickSecond: 0,
           lastEmptyAt: null,
           activeProposalId: null,
@@ -2913,9 +3070,9 @@ function updateClickAvailability(){
       if (!lastExit || !state.isReady) return;
       const elapsed = Date.now() - lastExit;
       if (elapsed < 2000) return;
-      const fx = calcEffects();
+      const offlinePerSecond = getOfflinePerSecond();
       const cappedSeconds = Math.min(Math.floor(elapsed / 1000), 6 * 60 * 60);
-      const offlineGain = Math.max(0, Math.floor(cappedSeconds * Math.max(0, (fx.offline + fx.passive * 0.25) * 0.08)));
+      const offlineGain = Math.max(0, Math.floor(cappedSeconds * offlinePerSecond));
       showOfflineToast(`Has estado fuera ${Math.floor(elapsed / 1000)}s y tus mejoras habrían generado unos ${formatNumber(offlineGain)} clicks offline.`);
     }
 
@@ -3115,6 +3272,26 @@ function updateClickAvailability(){
         }catch(_e){
           window.open(REMOTE_DOWNLOAD_URL, "_blank", "noopener");
         }
+      });
+    }
+    if (els.updateContinueBtn){
+      els.updateContinueBtn.addEventListener("click", () => {
+        syncInstalledVersionLabel();
+        openUpdateWarning();
+      });
+    }
+    if (els.updateWarningNoBtn){
+      els.updateWarningNoBtn.addEventListener("click", () => {
+        hideUpdateWarning();
+        if (!state.updateOverride){
+          showUpdateOverlay();
+        }
+      });
+    }
+    if (els.updateWarningYesBtn){
+      els.updateWarningYesBtn.addEventListener("click", () => {
+        if (els.updateWarningYesBtn.disabled) return;
+        continueWithOldVersion();
       });
     }
 
