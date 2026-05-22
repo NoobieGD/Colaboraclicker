@@ -1166,7 +1166,7 @@
       <p id="updateOverlayText">Hay una versión más reciente de Colaboraclicker.</p>
       <div class="update-overlay-actions">
         <a id="updateDownloadBtn" class="update-overlay-btn primary" href="https://raw.githubusercontent.com/NoobieGD/Colaboraclicker/main/index.html" download="index.html" target="_blank" rel="noopener">Descargar HTML</a>
-        <button id="updateContinueBtn" class="update-overlay-btn follow-version" type="button">Seguir con <span id="installedVersionText">1.2.2</span></button>
+        <button id="updateContinueBtn" class="update-overlay-btn follow-version" type="button">Seguir con <span id="installedVersionText">1.2.3</span></button>
       </div>
     </div>
   </div>
@@ -1189,7 +1189,7 @@
         <div class="logo">C</div>
         <div>
           <h1>Colaboraclicker</h1>
-          <p>Clicks compartidos · v1.2.2</p>
+          <p>Clicks compartidos · v1.2.3</p>
         </div>
       </div>
 
@@ -1413,7 +1413,7 @@
       appId: "1:597310300521:web:ea4f0abb2c18535f0f9df8"
     };
 
-    const APP_VERSION = "1.2.2";
+    const APP_VERSION = "1.2.3";
     const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/NoobieGD/Colaboraclicker/main/index.html";
     const REMOTE_DOWNLOAD_URL = "https://raw.githubusercontent.com/NoobieGD/Colaboraclicker/main/index.html";
 
@@ -1705,6 +1705,7 @@
       chartPoints: [],
       chartHoverIndex: -1,
       offlineCatchupBusy: false,
+      offlineCatchupLocked: false,
       updateChecked: false,
       updateAvailable: false,
       updateOverride: sessionStorage.getItem("colaboraclicker_allow_old_version") === "1",
@@ -2545,7 +2546,7 @@ function updateClickAvailability(){
     }
 
     async function catchUpOfflineClicks(){
-      if (!state.db || !state.isReady || state.offlineCatchupBusy) return 0;
+      if (!state.db || !state.isReady || state.offlineCatchupBusy || state.offlineCatchupLocked) return 0;
       state.offlineCatchupBusy = true;
       try{
         const now = Date.now();
@@ -2577,6 +2578,8 @@ function updateClickAvailability(){
 
         if (!tx.committed || appliedGain <= 0) return 0;
 
+        state.offlineCatchupLocked = true;
+        state.offlineCatchupHoldUntil = now + 5000;
         state.sharedState.lastOfflineCatchupAt = now;
         state.sharedState.lastOfflineCatchupSecond = nowSec;
         state.sharedState.lastAppliedSecond = Math.max(Number(state.sharedState.lastAppliedSecond || 0), nowSec);
@@ -2584,7 +2587,7 @@ function updateClickAvailability(){
         state.sharedState.totalGenerated = Number(state.sharedState.totalGenerated || 0) + appliedGain;
         updateCounter(els.counter, state.counterDigits, state.sharedState.globalClicks);
         syncInstalledVersionLabel();
-      if (state.name){
+        if (state.name){
           await incrementUserStats(appliedGain);
         }
         playOfflineSound();
@@ -2593,6 +2596,9 @@ function updateClickAvailability(){
         return appliedGain;
       }finally{
         state.offlineCatchupBusy = false;
+        setTimeout(() => {
+          state.offlineCatchupLocked = false;
+        }, 500);
       }
     }
 
@@ -2978,18 +2984,30 @@ function updateClickAvailability(){
       let stateLoaded = false;
       onValue(ref(state.db, "state"), (snap) => {
         const v = snap.val() || {};
-        state.sharedState.globalClicks = Number(v.globalClicks || 0);
-        state.sharedState.totalGenerated = Number(v.totalGenerated || v.globalClicks || 0);
+        const remoteGlobalClicks = Number(v.globalClicks || 0);
+        const remoteTotalGenerated = Number(v.totalGenerated || v.globalClicks || 0);
+        const remoteCatchupAt = Number(v.lastOfflineCatchupAt || 0);
+        const localGlobalClicks = Number(state.sharedState.globalClicks || 0);
+        const localTotalGenerated = Number(state.sharedState.totalGenerated || 0);
+        const protectOffline = !!state.offlineCatchupHoldUntil && Date.now() < state.offlineCatchupHoldUntil && remoteGlobalClicks < localGlobalClicks;
+
+        if (protectOffline){
+          state.sharedState.globalClicks = localGlobalClicks;
+          state.sharedState.totalGenerated = Math.max(localTotalGenerated, remoteTotalGenerated);
+        }else{
+          state.sharedState.globalClicks = remoteGlobalClicks;
+          state.sharedState.totalGenerated = remoteTotalGenerated;
+        }
         state.sharedState.upgrades = v.upgrades || {};
         state.sharedState.lastAppliedSecond = Number(v.lastAppliedSecond || 0);
         state.sharedState.lastOfflineCatchupSecond = Number(v.lastOfflineCatchupSecond || 0);
-        state.sharedState.lastOfflineCatchupAt = Number(v.lastOfflineCatchupAt || 0);
+        state.sharedState.lastOfflineCatchupAt = remoteCatchupAt;
         state.sharedState.lastEmptyAt = Number(v.lastEmptyAt || 0) || null;
         state.sharedState.activeProposalId = v.activeProposalId || null;
         state.sharedState.maxPerSecond = Number(v.maxPerSecond || 0);
         state.sharedState.maxPerSecondAt = Number(v.maxPerSecondAt || 0);
-        if (state.onlineCount > 0){
-          catchUpOfflineClicks().catch(() => {});
+        if (!protectOffline && remoteCatchupAt >= Number(state.sharedState.lastOfflineCatchupAt || 0) && state.offlineCatchupHoldUntil){
+          state.offlineCatchupHoldUntil = 0;
         }
         updateCounter(els.counter, state.counterDigits, state.sharedState.globalClicks);
         updateCounter(els.globalRateBig, state.rateCounterDigits, state.lastRenderedGlobalRate || 0);
@@ -3172,9 +3190,8 @@ function updateClickAvailability(){
       els.app.style.display = "grid";
       playJoinSound();
       await initFirebase();
-      // Esperar a que los datos (upgrades) se carguen antes de aplicar offline
+      // Esperar a que los datos (upgrades) se carguen antes de continuar
       await dataReadyPromise;
-      await catchUpOfflineClicks().catch(() => {});
       showBanner("Listo", `Entras como ${name}.`);
       setTimeout(attemptResumeOfflineToast, 1000);
     }
